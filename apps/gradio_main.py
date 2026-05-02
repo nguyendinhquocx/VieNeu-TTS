@@ -47,6 +47,11 @@ if HAS_GPU:
         "supports_streaming": False,
         "description": "⚡ Bản 0.3B tối ưu cho GPU, rất nhanh"
     }
+    filtered_backbones["VieNeu-TTS-0.3B-ngoc-huyen (GPU)"] = {
+        "repo": "pnnbao-ump/VieNeu-TTS-0.3B-ngoc-huyen",
+        "supports_streaming": False,
+        "description": "✨ Voice: Ngọc Huyền - 0.3B"
+    }
     filtered_backbones["VieNeu-TTS-v2-Turbo (GPU)"] = {
         "repo": "pnnbao-ump/VieNeu-TTS-v2-Turbo",
         "supports_streaming": False,
