@@ -65,7 +65,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
      uv sync
      ```
    - **Option 2: Full (GPU/Standard)** - High Quality & Podcast Mode *(For GPU users)*
-     > 💡 *Note: Requires a CUDA-compatible NVIDIA GPU (CUDA version >= 12.8) or Apple Silicon MPS. [NVIDIA Toolkit](https://developer.nvidia.com/cuda-downloads) is required for maximum speed. Enables the full **Standard VieNeu-TTS** backbone for maximum audio quality and high-fidelity voice cloning.*
+     > 💡 *Note: Requires a CUDA-compatible NVIDIA GPU (CUDA version >= 12.8) or Apple Silicon MPS. [NVIDIA Toolkit](https://developer.nvidia.com/cuda-downloads) is required for maximum speed. Enables the full **VieNeu-TTS-v2** backbone for maximum audio quality and high-fidelity voice cloning.*
 
      ```bash
      uv sync --group gpu
@@ -75,7 +75,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
    ```bash
    uv run vieneu-web
    ```
-   Access the UI at `http://127.0.0.1:7860`. The **Turbo v2** model is selected by default for immediate use.
+   Access the UI at `http://127.0.0.1:7860`.
 
 ---
 
