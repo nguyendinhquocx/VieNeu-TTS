@@ -23,6 +23,7 @@ Credits
 - Audio codec: MOSS-Audio-Tokenizer-Nano (OpenMOSS-Team).
 """
 from __future__ import annotations
+import math
 import re
 import threading
 import time
@@ -213,7 +214,7 @@ class VieNeuTTSv3Turbo:
         sgs_id = self.config.speech_generation_start_token_id
         n_vq = self.config.n_vq
         audio_pad = self.config.audio_pad_token_id
-        hist = [set() for _ in range(n_vq)] if repetition_penalty != 1.0 else None
+        hist = [set() for _ in range(n_vq)] if not math.isclose(repetition_penalty, 1.0) else None
         for _ in range(max_new_frames):
             frame_codes, last_local_out = self.model.decode_one_frame(h, text_token_id=torch.tensor([sgs_id], device=self.device), temperature=temperature, top_k=top_k, audio_top_p=top_p, repetition_penalty=repetition_penalty, history_by_channel=hist)
             all_codes.append(frame_codes.cpu())
@@ -243,7 +244,7 @@ class VieNeuTTSv3Turbo:
         n_vq = self.config.n_vq
         audio_pad = self.config.audio_pad_token_id
         buffer: List[torch.LongTensor] = []
-        hist = [set() for _ in range(n_vq)] if repetition_penalty != 1.0 else None
+        hist = [set() for _ in range(n_vq)] if not math.isclose(repetition_penalty, 1.0) else None
         sr = self.SAMPLE_RATE
         first_decode = True
         emitted_samples = 0

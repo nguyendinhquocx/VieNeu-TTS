@@ -18,6 +18,7 @@ drop-in engine on CPU.
 from __future__ import annotations
 
 import json
+import math
 import threading
 from pathlib import Path
 from typing import List, Optional
@@ -154,7 +155,7 @@ class OnnxV3LiteEngine:
 
     def _sample(self, logits, temperature, top_k, top_p, rep_pen, prev):
         logits = logits.astype(np.float32)
-        if rep_pen != 1.0 and prev:
+        if not math.isclose(rep_pen, 1.0) and prev:
             idx = np.fromiter(prev, dtype=np.int64, count=len(prev))
             sel = logits[idx]
             logits = logits.copy()
@@ -251,7 +252,7 @@ class OnnxV3LiteEngine:
             past_v = [pre[1 + self.L + i] for i in range(self.L)]
             h = pre[0][:, -1]
             Tprompt = prompt_embeds.shape[1]
-            hist = [set() for _ in range(self.n_vq)] if repetition_penalty != 1.0 else None
+            hist = [set() for _ in range(self.n_vq)] if not math.isclose(repetition_penalty, 1.0) else None
             frames: List[np.ndarray] = []
             for t in range(max_new_frames):
                 codes, eos = self._acoustic_frame(h, temperature, top_k, top_p, repetition_penalty, hist)

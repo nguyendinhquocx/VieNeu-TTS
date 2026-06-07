@@ -20,6 +20,7 @@ Credits
 - Audio codec: MOSS-Audio-Tokenizer-Nano (OpenMOSS-Team).
 """
 from __future__ import annotations
+import math
 from typing import Optional
 import torch
 import torch.nn as nn
@@ -226,7 +227,7 @@ class VieNeuV3TurboForTTS(PreTrainedModel):
         return (torch.stack(sampled_codes), prefill_out)
 
 def _sample_token(logits: torch.Tensor, temperature: float=1.0, top_k: int=0, top_p: float=1.0, repetition_penalty: float=1.0, prev_tokens=None) -> torch.LongTensor:
-    if repetition_penalty != 1.0 and prev_tokens:
+    if not math.isclose(repetition_penalty, 1.0) and prev_tokens:
         idx = torch.as_tensor(sorted(prev_tokens), device=logits.device, dtype=torch.long)
         sel = logits[idx]
         logits = logits.clone()

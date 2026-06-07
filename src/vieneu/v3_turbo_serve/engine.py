@@ -12,6 +12,7 @@ to a waveform at the end. Pure PyTorch, runs on CUDA (or CPU).
 """
 from __future__ import annotations
 
+import math
 from typing import List, Optional
 
 import numpy as np
@@ -93,9 +94,9 @@ class V3TurboBatchEngine:
         # Per-row, per-codebook history for the repetition penalty (matches the
         # single-path decode_one_frame). None when the penalty is disabled.
         history = ([[set() for _ in range(n_vq)] for _ in range(B)]
-                   if repetition_penalty != 1.0 else None)
+                   if not math.isclose(repetition_penalty, 1.0) else None)
         # CUDA graph bakes in a static step → incompatible with dynamic rep-penalty.
-        use_graph = use_cudagraph and dev.type == "cuda" and repetition_penalty == 1.0
+        use_graph = use_cudagraph and dev.type == "cuda" and math.isclose(repetition_penalty, 1.0)
         graphed = self._get_graph(B, temperature, top_k, top_p) if use_graph else None
 
         h, cache, mask, pos = self.bb.prefill(embeds_list)   # h: (B, H)

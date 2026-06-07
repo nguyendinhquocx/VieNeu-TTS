@@ -12,6 +12,7 @@ over the batch dimension.
 """
 from __future__ import annotations
 
+import math
 from typing import List
 
 import torch
@@ -30,7 +31,7 @@ def _sample_batched(
     each row's logits BEFORE temperature — same CTRL/MOSS rule as the single-path
     ``_sample_token`` (logit<0 → *penalty, else /penalty).
     """
-    if repetition_penalty != 1.0 and prev is not None:
+    if not math.isclose(repetition_penalty, 1.0) and prev is not None:
         for b, seen in enumerate(prev):
             if seen:
                 idx = torch.as_tensor(sorted(seen), device=logits.device, dtype=torch.long)
@@ -84,7 +85,7 @@ def generate_frame_batched(
     dev = backbone_hidden.device
     B = backbone_hidden.shape[0]
     sgs = cfg.speech_generation_start_token_id
-    use_rep = repetition_penalty != 1.0 and history is not None
+    use_rep = not math.isclose(repetition_penalty, 1.0) and history is not None
 
     def _sample_ch(ch: int, vec: torch.Tensor) -> torch.Tensor:
         logits = model.audio_lm_heads[ch](vec).float()                            # (B, V)
