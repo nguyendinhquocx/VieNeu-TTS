@@ -26,6 +26,14 @@ from vieneu_utils.phonemize_text import phonemize_to_chunks, normalize_to_chunks
 from vieneu_utils.phonemize_text import PuncNormalizer as Normalizer
 import gc
 
+# PDF text extraction
+try:
+    import fitz  # PyMuPDF
+    HAS_FITZ = True
+except ImportError:
+    HAS_FITZ = False
+    fitz = None
+
 from apps.ui_utils import (
     _format_duration,
     _split_estimate_status,
@@ -1673,6 +1681,26 @@ def extract_speakers_from_script(script):
 
     return name_updates + dd_updates + row_updates
 
+def extract_text_from_pdf(pdf_path: str) -> str:
+    """Extract all text from a PDF file using PyMuPDF (fitz)."""
+    global HAS_FITZ, fitz
+    if not HAS_FITZ:
+        return "⚠️ PyMuPDF chưa được cài đặt. Vui lòng chạy: pip install PyMuPDF"
+    try:
+        doc = fitz.open(pdf_path)
+        pages_text = []
+        for page_num, page in enumerate(doc):
+            text = page.get_text()
+            if text and text.strip():
+                pages_text.append(text.strip())
+        doc.close()
+        if not pages_text:
+            return "⚠️ Không tìm thấy văn bản trong file PDF."
+        full_text = "\n\n".join(pages_text)
+        return full_text
+    except Exception as e:
+        return f"⚠️ Lỗi khi đọc PDF: {str(e)}"
+
 EXAMPLES_LIST = [
     ["Về miền Tây không chỉ để ngắm nhìn sông nước hữu tình, mà còn để cảm nhận tấm chân tình của người dân nơi đây.", "Vĩnh (nam miền Nam)"],
     ["Hà Nội những ngày vào thu mang một vẻ đẹp trầm mặc và cổ kính đến lạ thường.", "Bình (nam miền Bắc)"],
@@ -1840,6 +1868,21 @@ with gr.Blocks(theme=theme, css=css, title="VieNeu-TTS", head=head_html) as demo
                 with gr.Tabs() as main_input_tabs:
                     # --- TAB 1: SINGLE SPEAKER ---
                     with gr.Tab("🦜 Đọc truyện", id="single_tab") as single_tab:
+                        with gr.Accordion("📄 Tải lên PDF để trích xuất văn bản", open=False):
+                            gr.Markdown(
+                                "Tải lên file PDF, văn bản sẽ được tự động trích xuất và điền vào ô bên dưới. "
+                                "Bạn có thể chỉnh sửa lại trước khi tạo audio."
+                            )
+                            with gr.Row():
+                                pdf_upload = gr.File(
+                                    label="📄 Chọn file PDF",
+                                    file_types=[".pdf"],
+                                    file_count="single",
+                                    type="filepath",
+                                    scale=3,
+                                )
+                                btn_extract_pdf = gr.Button("📄 Trích xuất văn bản", variant="secondary", scale=1, min_width=150)
+                            pdf_status = gr.Markdown(visible=False)
                         text_input = gr.Textbox(
                             label=f"Văn bản",
                             lines=8,
@@ -2021,6 +2064,12 @@ with gr.Blocks(theme=theme, css=css, title="VieNeu-TTS", head=head_html) as demo
                         max_lines=4,
                         show_copy_button=True
                     )
+                download_btn = gr.DownloadButton(
+                    "📥 Tải xuống file Audio",
+                    variant="primary",
+                    visible=False,
+                    elem_classes="download-btn"
+                )
                 gr.Markdown("<div style='text-align: center; color: #64748b; font-size: 0.8rem;'>🔒 Audio được đóng dấu bản quyền ẩn (Watermarker) để bảo mật và định danh AI.</div>")
         
         codec_select.change(
@@ -2139,6 +2188,34 @@ with gr.Blocks(theme=theme, css=css, title="VieNeu-TTS", head=head_html) as demo
                      *speaker_voice_dds]
         )
         
+        # --- PDF Upload Event Handlers ---
+        def on_pdf_upload(pdf_file):
+            """Extract text from uploaded PDF and populate text input."""
+            if not pdf_file:
+                return gr.update(), gr.update(visible=False)
+            extracted = extract_text_from_pdf(pdf_file)
+            if extracted.startswith("⚠️"):
+                return gr.update(), gr.update(value=extracted, visible=True)
+            char_count = len(extracted)
+            return (
+                gr.update(value=extracted),
+                gr.update(
+                    value=f"✅ Đã trích xuất **{char_count:,}** ký tự từ file PDF. Bạn có thể chỉnh sửa văn bản bên dưới.",
+                    visible=True
+                )
+            )
+
+        pdf_upload.change(
+            fn=on_pdf_upload,
+            inputs=[pdf_upload],
+            outputs=[text_input, pdf_status]
+        )
+        btn_extract_pdf.click(
+            fn=on_pdf_upload,
+            inputs=[pdf_upload],
+            outputs=[text_input, pdf_status]
+        )
+
         # --- Conversation Event Handlers ---
         # Scan speakers → update all 8 slot rows/names/dropdowns
         btn_detect_speakers.click(
@@ -2192,6 +2269,30 @@ with gr.Blocks(theme=theme, css=css, title="VieNeu-TTS", head=head_html) as demo
         # Note: We avoid cancels= here to prevent internal Gradio KeyError crashes,
         # relying instead on the frequent _STOP_EVENT.is_set() checks in the code.
         btn_stop.click(fn=request_stop, outputs=[audio_output, status_output, estimate_output, btn_stop])
+
+        # --- Download Button Event Handlers ---
+        def on_audio_generated(audio_path):
+            """Show download button when audio is generated."""
+            if audio_path and os.path.exists(audio_path):
+                return gr.update(value=audio_path, visible=True)
+            return gr.update(visible=False)
+
+        # Connect to generation events (must be after gen_event/conv_gen_event are defined)
+        gen_event.then(
+            fn=on_audio_generated,
+            inputs=[audio_output],
+            outputs=[download_btn]
+        )
+        conv_gen_event.then(
+            fn=on_audio_generated,
+            inputs=[audio_output],
+            outputs=[download_btn]
+        )
+        # Also connect the stop button to hide download
+        btn_stop.click(
+            fn=lambda: gr.update(visible=False),
+            outputs=[download_btn]
+        )
 
         # Persistence: Restore UI state on load
         demo.load(
