@@ -26,8 +26,9 @@ from __future__ import annotations
 import json
 import math
 import threading
+import time
 from pathlib import Path
-from typing import List, Optional, Tuple, Union
+from typing import Generator, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -40,9 +41,11 @@ _GRAPH_FILES = [
 ]
 _CODEC_FILES = [
     "moss_audio_tokenizer_decode_full.onnx", "moss_audio_tokenizer_decode_shared.data",
+    "moss_audio_tokenizer_decode_step.onnx", "codec_browser_onnx_meta.json",
     "moss_audio_tokenizer_encode.onnx", "moss_audio_tokenizer_encode.data",
 ]
 _MAX_REF_SECONDS = 8.0
+_STREAM_LEADIN_FRAMES = 4
 
 
 class _Dev:
@@ -147,6 +150,18 @@ class OnnxV3LiteEngine:
             str(cd / "moss_audio_tokenizer_decode_full.onnx"), so, providers=prov)
         self._codec_enc_path = str(cd / "moss_audio_tokenizer_encode.onnx")
         self._sess_codec_enc = None  # lazy (only for cloning)
+        # Streaming codec decoder (decode_step) for infer_stream. Bit-exact to the full
+        # decoder when driven with the documented state (cached_positions init = -1).
+        self.sess_codec_step = None
+        self._codec_stream_spec = None
+        try:
+            meta = json.loads((cd / "codec_browser_onnx_meta.json").read_text(encoding="utf-8"))
+            self._codec_stream_spec = meta.get("streaming_decode")
+            self.sess_codec_step = ort.InferenceSession(
+                str(cd / "moss_audio_tokenizer_decode_step.onnx"), so, providers=prov)
+            self._codec_step_out_names = [o.name for o in self.sess_codec_step.get_outputs()]
+        except Exception:
+            self.sess_codec_step = None  # streaming decode unavailable → infer_stream falls back
 
         # ── Speaker encoder + denoiser (voice cloning), from repo root ──────────
         # Loaded lazily on first clone: the denoiser is torch-free, the speaker
@@ -391,6 +406,121 @@ class OnnxV3LiteEngine:
         if not frames:
             return np.zeros(0, dtype=np.float32)
         return self._decode_codes(np.stack(frames))                # (T, n_vq) → wav
+
+    # ── streaming synthesis (native, frame-level) ──────────────────────────────
+    def _stream_new_state(self) -> dict:
+        """Fresh decode_step state (cached_positions init = -1 marks empty slots)."""
+        sd = self._codec_stream_spec
+        st: dict = {}
+        for t in sd["transformer_offsets"]:
+            st[t["input_name"]] = np.zeros(tuple(t["shape"]), np.int32)
+        for a in sd["attention_caches"]:
+            st[a["offset_input_name"]] = np.zeros(tuple(a["offset_shape"]), np.int32)
+            st[a["cached_keys_input_name"]] = np.zeros(tuple(a["cache_shape"]), np.float32)
+            st[a["cached_values_input_name"]] = np.zeros(tuple(a["cache_shape"]), np.float32)
+            st[a["cached_positions_input_name"]] = np.full(tuple(a["positions_shape"]), -1, np.int32)
+        return st
+
+    def _stream_decode(self, frames: np.ndarray, state: dict) -> np.ndarray:
+        """Decode a group of frames (K, n_vq) incrementally; threads `state` in place."""
+        sd = self._codec_stream_spec
+        codes = np.asarray(frames, dtype=np.int32)[None]           # (1, K, n_vq)
+        feed = {"audio_codes": codes, "audio_code_lengths": np.array([codes.shape[1]], np.int32)}
+        feed.update(state)
+        outs = self.sess_codec_step.run(None, feed)
+        d = dict(zip(self._codec_step_out_names, outs))
+        for t in sd["transformer_offsets"]:
+            state[t["input_name"]] = d[t["output_name"]]
+        for a in sd["attention_caches"]:
+            state[a["offset_input_name"]] = d[a["offset_output_name"]]
+            state[a["cached_keys_input_name"]] = d[a["cached_keys_output_name"]]
+            state[a["cached_values_input_name"]] = d[a["cached_values_output_name"]]
+            state[a["cached_positions_input_name"]] = d[a["cached_positions_output_name"]]
+        return d["audio"][0].mean(0)[: int(d["audio_lengths"][0])].astype(np.float32)
+
+    def infer_stream(self, phonemes: Optional[str] = None, text: str = "", ref_codes=None,
+                     speaker_emb=None, style: str = "tu_nhien", use_ref_codes: bool = True,
+                     temperature: float = 0.8, top_k: int = 25, top_p: float = 0.95,
+                     max_new_frames: int = 300, chunk_frames: int = 25,
+                     repetition_penalty: float = 1.2, **_kw) -> Generator[np.ndarray, None, None]:
+        """Native low-latency streaming: yields 48 kHz audio as frames are produced.
+
+        Uses the MOSS streaming codec (decode_step), which is bit-exact to the full
+        decoder, so streamed audio matches non-streaming quality with no boundary
+        clicks. Falls back to a single ``infer`` if the streaming codec is missing.
+        """
+        if self.sess_codec_step is None or self._codec_stream_spec is None:
+            yield self.infer(phonemes=phonemes, text=text, ref_codes=ref_codes,
+                             speaker_emb=speaker_emb, style=style, use_ref_codes=use_ref_codes,
+                             temperature=temperature, top_k=top_k, top_p=top_p,
+                             max_new_frames=max_new_frames, repetition_penalty=repetition_penalty)
+            return
+        if phonemes is None:
+            from vieneu_utils.phonemize_text import phonemize_text_with_emotions
+            phonemes = phonemize_text_with_emotions(text)
+        if not use_ref_codes:
+            ref_codes = None
+        style_id = self._resolve_style_id(style)
+        anchor = self._speaker_anchor(speaker_emb)
+        rows = self._build_rows(phonemes, ref_codes, style_id)
+        prompt_embeds = self._embed_rows(rows, anchor)
+
+        with self._lock:
+            pre = self.sess_pre.run(None, {"inputs_embeds": prompt_embeds})
+            past_k = [pre[1 + i] for i in range(self.L)]
+            past_v = [pre[1 + self.L + i] for i in range(self.L)]
+            h = pre[0][:, -1]
+            Tprompt = prompt_embeds.shape[1]
+            hist = [set() for _ in range(self.n_vq)] if not math.isclose(repetition_penalty, 1.0) else None
+            state = self._stream_new_state()
+            buffer: List[np.ndarray] = []
+            sr = self.SAMPLE_RATE
+            emitted = 0
+            t_first: Optional[float] = None
+
+            def _target() -> int:
+                cap = max(1, chunk_frames)
+                if t_first is None:
+                    return min(cap, _STREAM_LEADIN_FRAMES)
+                lead = emitted / sr - (time.perf_counter() - t_first)
+                if lead < 0.20:
+                    return min(cap, _STREAM_LEADIN_FRAMES)
+                if lead < 0.55:
+                    return min(cap, 6)
+                if lead < 1.10:
+                    return min(cap, 8)
+                return cap
+
+            for t in range(max_new_frames):
+                codes, eos = self._acoustic_frame(h, temperature, top_k, top_p, repetition_penalty, hist)
+                buffer.append(np.asarray(codes, dtype=np.int64))
+                if not eos:
+                    slot = np.full((1, 1, self.n_vq + 1), self.audio_pad, dtype=np.int64)
+                    slot[:, :, 0] = self.sgs
+                    slot[0, 0, 1:] = codes
+                    se = self._embed_rows(slot[0], anchor)
+                    feed = {"inputs_embeds": se, "position_ids": np.array([[Tprompt + t]], np.int64)}
+                    for i in range(self.L):
+                        feed[f"past_k_{i}"] = past_k[i]
+                        feed[f"past_v_{i}"] = past_v[i]
+                    out = self.sess_dec.run(None, feed)
+                    h = out[0][:, 0]
+                    past_k = [out[1 + i] for i in range(self.L)]
+                    past_v = [out[1 + self.L + i] for i in range(self.L)]
+                if len(buffer) >= _target() or eos:
+                    wav = self._stream_decode(np.stack(buffer), state)
+                    buffer = []
+                    if wav.size:
+                        if t_first is None:
+                            t_first = time.perf_counter()
+                        emitted += wav.size
+                        yield wav
+                if eos:
+                    break
+            if buffer:
+                wav = self._stream_decode(np.stack(buffer), state)
+                if wav.size:
+                    yield wav
 
     # ── codec (MOSS ONNX) ──────────────────────────────────────────────────────
     def _decode_codes(self, codes: np.ndarray) -> np.ndarray:

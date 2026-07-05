@@ -283,15 +283,30 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
     ) -> Generator[np.ndarray, None, None]:
         speaker_emb, ref_codes = self._resolve_ref(voice, ref_audio, denoise, use_ref_codes)
         chunks = normalize_to_chunks_v3(text, max_chars=max_chars)
+        # Prefer the engine's native frame-level streaming (low first-audio latency);
+        # both the PyTorch and ONNX engines expose infer_stream. Fall back to one
+        # full infer per chunk if not available.
+        stream_fn = getattr(self.engine, "infer_stream", None)
         for chunk in chunks:
             ph = phonemize_text_with_emotions(chunk)
-            wav = self.engine.infer(
-                phonemes=ph, speaker_emb=speaker_emb, ref_codes=ref_codes,
-                style=style, use_ref_codes=use_ref_codes,
-                temperature=temperature, top_k=top_k, top_p=top_p,
-                max_new_frames=max_new_frames, repetition_penalty=repetition_penalty,
-            )
-            yield self._apply_watermark(wav) if apply_watermark else wav
+            if stream_fn is not None:
+                for sub in stream_fn(
+                    phonemes=ph, speaker_emb=speaker_emb, ref_codes=ref_codes,
+                    style=style, use_ref_codes=use_ref_codes,
+                    temperature=temperature, top_k=top_k, top_p=top_p,
+                    max_new_frames=max_new_frames, repetition_penalty=repetition_penalty,
+                ):
+                    if sub is None or len(sub) == 0:
+                        continue
+                    yield self._apply_watermark(sub) if apply_watermark else sub
+            else:
+                wav = self.engine.infer(
+                    phonemes=ph, speaker_emb=speaker_emb, ref_codes=ref_codes,
+                    style=style, use_ref_codes=use_ref_codes,
+                    temperature=temperature, top_k=top_k, top_p=top_p,
+                    max_new_frames=max_new_frames, repetition_penalty=repetition_penalty,
+                )
+                yield self._apply_watermark(wav) if apply_watermark else wav
 
     def infer_batch(self, texts: List[str], apply_watermark: bool = True, **kwargs: Any) -> List[np.ndarray]:
         return [self.infer(t, apply_watermark=apply_watermark, **kwargs) for t in texts]
