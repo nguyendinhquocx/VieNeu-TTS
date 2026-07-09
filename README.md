@@ -124,6 +124,16 @@ for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
 ```
 
+#### Available Voices
+
+The v3 Turbo engine includes **14 curated preset voices** covering **3 Vietnamese regions** (North, Central, South) with diverse genders and styles:
+
+- **Northern (Bắc)**: Natural, news, storytelling styles
+- **Central (Trung)**: Natural style (Quang Sơn, Ngọc Trân)
+- **Southern (Nam)**: Natural, news, storytelling styles
+
+Each voice supports **3 reading styles**: natural (`tu_nhien`), news (`tin_tuc`), and storytelling (`doc_truyen`).
+
 ### Reading style
 
 Pick how the text is read with `style` (default `"tu_nhien"`):

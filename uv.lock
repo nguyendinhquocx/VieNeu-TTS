@@ -5491,7 +5491,6 @@ dependencies = [
     { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "onnxruntime", version = "1.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "perth" },
-    { name = "pymupdf" },
     { name = "pyyaml" },
     { name = "sea-g2p" },
     { name = "soundfile" },
@@ -5518,6 +5517,9 @@ gpu = [
     { name = "transformers", version = "5.7.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version == '3.11.*' and sys_platform == 'win32') or (python_full_version >= '3.13' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "triton", marker = "sys_platform == 'linux'" },
     { name = "triton-windows", marker = "sys_platform == 'win32'" },
+]
+pdf = [
+    { name = "pymupdf" },
 ]
 
 [package.dev-dependencies]
@@ -5567,7 +5569,7 @@ requires-dist = [
     { name = "numpy" },
     { name = "onnxruntime", specifier = ">=1.20.0" },
     { name = "perth", specifier = ">=0.2.0" },
-    { name = "pymupdf", specifier = ">=1.25.0" },
+    { name = "pymupdf", marker = "extra == 'pdf'", specifier = ">=1.25.0" },
     { name = "pyyaml" },
     { name = "sea-g2p", specifier = ">=0.7.14" },
     { name = "soundfile" },
@@ -5581,7 +5583,7 @@ requires-dist = [
     { name = "triton", marker = "sys_platform == 'linux' and extra == 'gpu'" },
     { name = "triton-windows", marker = "sys_platform == 'win32' and extra == 'gpu'" },
 ]
-provides-extras = ["gpu"]
+provides-extras = ["gpu", "pdf"]
 
 [package.metadata.requires-dev]
 dev = [
