@@ -21,30 +21,28 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           # GITHUB_TOKEN không có quyền modify workflow files (security restriction).
-          # Nên merge upstream nhưng revert lại bất kỳ thay đổi nào trong .github/workflows/.
+          # Merge upstream nhưng preserve .github/workflows/ về pre-merge state hoàn toàn.
+          set -e
           BRANCH="${{ github.event.repository.default_branch }}"
           UPSTREAM=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.parent.full_name')
           git remote add upstream "https://github.com/$UPSTREAM.git"
           git fetch upstream "$BRANCH"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Lưu snapshot workflow files của fork trước merge
-          WORKFLOW_SNAPSHOT=$(mktemp -d)
-          if [ -d .github/workflows ]; then
-            cp -r .github/workflows "$WORKFLOW_SNAPSHOT/"
+          PRE_MERGE=$(git rev-parse HEAD)
+          # Merge với -X ours: hunk conflict giữ fork version, non-conflict apply upstream
+          if ! git merge "upstream/$BRANCH" --no-edit -X ours; then
+            # Có conflict (thường modify/delete ở workflow files) → resolve giữ PRE_MERGE
+            git diff --name-only --diff-filter=U | while read f; do
+              git checkout "$PRE_MERGE" -- "$f" 2>/dev/null || rm -f "$f"
+              git add "$f" 2>/dev/null || true
+            done
+            git commit --no-edit --no-verify || true
           fi
-          if git merge "upstream/$BRANCH" --no-edit -X ours; then
-            # Restore fork's workflow files (revert upstream workflow changes)
-            if [ -d "$WORKFLOW_SNAPSHOT/workflows" ]; then
-              rm -rf .github/workflows
-              mkdir -p .github
-              cp -r "$WORKFLOW_SNAPSHOT/workflows" .github/
-              git add .github/workflows
-              git diff --cached --quiet || git commit -m "chore: preserve fork workflow files"
-            fi
-            git push origin "$BRANCH"
-            echo "sync ok"
-          else
-            echo "merge failed"
-            exit 1
-          fi
+          # Preserve .github/workflows/ về PRE_MERGE state (loại mọi change của upstream)
+          git checkout "$PRE_MERGE" -- .github/workflows/ 2>/dev/null || true
+          git clean -fd .github/workflows/ 2>/dev/null || true
+          git add -A
+          git diff --cached --quiet HEAD || git commit -m "chore: preserve fork workflow files" --no-verify || true
+          git push origin "$BRANCH"
+          echo "sync ok"
