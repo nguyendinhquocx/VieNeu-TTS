@@ -75,21 +75,22 @@ except ImportError:
 filtered_backbones = {}
 
 # VieNeu-TTS v3 Turbo (early access) — PyTorch, runs on both CPU and GPU.
-# NOTE: this hardcoded `filtered_backbones` dict OVERRIDES config.yaml's
-# backbone_configs (see the reassignment below), so the model list is edited here.
-# int8 ĐẶT TRƯỚC → mặc định. Backbone nén int8: nhanh ~3x/frame trên CPU, nhỏ 4x,
-# chất giọng đã A/B nghe đạt. fp32 giữ lại cho ai cần chất lượng tối đa (chậm hơn CPU).
-filtered_backbones["VieNeu-TTS-v3-Turbo (int8)"] = {
-    "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
-    "precision": "int8",
-    "supports_streaming": False,
-    "description": "🆕 v3 Turbo (int8) — 48kHz, TỐI ƯU CHO CPU: nhanh nhất (backbone nén int8, ~3x/frame, nhẹ 4x). Khuyến nghị cho máy CPU. Giọng mặc định dùng speaker token; Voice Cloning clone từ audio mẫu; tag cảm xúc [cười]/[hắng giọng]/[thở dài] (thử nghiệm)."
-}
+if not HAS_GPU:
+    filtered_backbones["VieNeu-TTS-v3-Turbo (int8)"] = {
+        "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+        "precision": "int8",
+        "supports_streaming": False,
+        "description": "🆕 v3 Turbo (int8) — 48kHz, TỐI ƯU CHO CPU: nhanh nhất (backbone nén int8, ~3x/frame, nhẹ 4x). Khuyến nghị cho máy CPU. Giọng mặc định dùng speaker token; Voice Cloning clone từ audio mẫu; tag cảm xúc [cười]/[hắng giọng]/[thở dài] (thử nghiệm)."
+    }
 filtered_backbones["VieNeu-TTS-v3-Turbo"] = {
     "repo": "pnnbao-ump/VieNeu-TTS-v3-Turbo",
     "precision": "fp32",
     "supports_streaming": False,
-    "description": "v3 Turbo (fp32) — chất lượng tối đa nhưng CHẬM hơn trên CPU. Chỉ nên chọn khi cần chất lượng cao nhất; máy CPU nên dùng bản (int8)."
+    "description": (
+        "🆕 v3 Turbo — 48kHz. Giọng mặc định dùng speaker token (ổn định hơn); Voice Cloning "
+        "clone từ audio mẫu; tag cảm xúc [cười]/[hắng giọng]/[thở dài] (thử nghiệm)."
+        + ("" if HAS_GPU else " Trên CPU đây là bản chất-lượng-tối-đa (chậm hơn bản int8).")
+    )
 }
 
 # GPU-only extras. On GPU the default is VieNeu-TTS-v2 (GPU); v3 Turbo stays the
