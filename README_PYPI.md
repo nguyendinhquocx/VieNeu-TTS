@@ -1,79 +1,96 @@
 # 🦜 VieNeu-TTS
 
-**VieNeu-TTS** is an advanced on-device Vietnamese Text-to-Speech (TTS) model with **instant voice cloning** and **English-Vietnamese bilingual** support.
+**VieNeu-TTS** is an advanced on-device Vietnamese Text-to-Speech (TTS) with **instant voice cloning** and **English–Vietnamese bilingual** support. The SDK **defaults to VieNeu-TTS v3 Turbo (48 kHz)** and the minimal install is **torch-free** — on CPU it runs entirely on ONNX Runtime.
 
-[![Hugging Face v2 Turbo](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-v2%20Turbo-blue)](https://huggingface.co/pnnbao-ump/VieNeu-TTS-v2-Turbo)
+[![Hugging Face v3 Turbo](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-v3%20Turbo-red)](https://huggingface.co/pnnbao-ump/VieNeu-TTS-v3-Turbo)
 [![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)](https://opensource.org/licenses/Apache-2.0)
 
 ## ✨ Key Features
-- **Bilingual (English-Vietnamese)**: Seamless transitions between languages (Code-switching) in version 2.0+.
-- **Instant Voice Cloning**: Clone any voice with just 3-5s of reference audio (**Turbo v2** & GPU modes).
-- **Ultra-Fast Turbo Mode**: Optimized for **CPU (GGUF)** and **GPU (LMDeploy)**. Extremely fast inference!
-- **Production Ready**: High-fidelity 24 kHz audio generation, fully offline.
-- **AI Identification**: Built-in audio watermarking for responsible AI use.
+- **v3 Turbo, 48 kHz** — high-fidelity, natural Vietnamese speech (default).
+- **Torch-free on CPU** — minimal install runs on ONNX Runtime; PyTorch is never imported.
+- **Built-in default voices** — call them by name, no reference clip needed.
+- **Instant voice cloning** — clone any voice from 3–5s of audio.
+- **Emotion cues** *(experimental)* — drop `[cười]`, `[thở dài]`, `[hắng giọng]` into the text.
+- **Bilingual (En–Vi) code-switching**, fully offline.
 
 ---
 
-## 📦 Quick Install
+## 📦 Install
 
 ```bash
-# Minimal installation (Turbo/CPU Only)
+# Minimal, TORCH-FREE — runs v3 Turbo on CPU via ONNX Runtime
 pip install vieneu
 
-# Optional: Pre-built llama-cpp-python for CPU (if building fails)
-pip install vieneu --extra-index-url https://pnnbao97.github.io/llama-cpp-python-v0.3.16/cpu/
+# Optional: GPU + older backends (v1/v2 PyTorch & GGUF, v3 Turbo on GPU)
+pip install "vieneu[gpu]"
 ```
+
 ---
 
 ## 🚀 Quick Start (Python SDK)
 
-The SDK now defaults to **Turbo mode** for maximum out-of-the-box compatibility.
-
 ```python
 from vieneu import Vieneu
 
-# Initialize - Minimal dependencies required!
+# Default = v3 Turbo (48 kHz). GPU → PyTorch (auto-detected).
 tts = Vieneu()
 
-# 1. Simple synthesis (uses default 'Xuân Vĩnh')
-text = "Hệ thống điện chủ sử dụng alternating current because it is more efficient."
-audio = tts.infer(text=text)
+# 1. Built-in voice by name — no reference needed
+print("🔊 Generating speech...")
+audio = tts.infer("Xin chào, đây là VieNeu-TTS.", voice="Trúc Ly")
 tts.save(audio, "output.wav")
+print("✅ Saved to output.wav")
 
-# 2. Using a specific Preset Voice
+# List the built-in voices
 voices = tts.list_preset_voices()
-# Select 'Bắc (Nam miền Bắc)' ID
-my_voice_id = voices[1][1] if len(voices) > 1 else voices[0][1]
-voice_data = tts.get_preset_voice(my_voice_id)
+print(f"\n🎙️  {len(voices)} built-in voices available:")
+for label, voice_id in voices:
+    print(f"  - {label} ({voice_id})")
 
-audio_custom = tts.infer(text="Tôi đang nói bằng giọng của anh Bình.", voice=voice_data)
-tts.save(audio_custom, "output_custom.wav")
+# 2. Reading style: "tu_nhien" (natural) | "tin_tuc" (news) | "doc_truyen" (storytelling)
+audio = tts.infer("Bản tin sáng nay.", voice="Phạm Tuyên", style="tin_tuc")
+
+# 3. Emotion / non-verbal cues — EXPERIMENTAL: [cười] [thở dài] [hắng giọng]
+audio = tts.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
 ```
 
-### 🦜 Zero-shot Voice Cloning (SDK)
+### 🦜 Zero-shot Voice Cloning
+
+Clone from a short clip; the reference is auto-denoised and trimmed to ≤ 8s.
 
 ```python
 from vieneu import Vieneu
 tts = Vieneu()
 
-# 1. Encode reference audio (3-5s wav/mp3)
-my_voice = tts.encode_reference("path/to/voice.wav")
-
-# 2. Synthesize with cloned voice (No ref text needed for v2!)
-audio = tts.infer(text="Chào bạn, đây là giọng của tôi.", voice=my_voice)
+# Clone straight from a 3–8s clip
+audio = tts.infer("Chào bạn, đây là giọng của tôi.", ref_audio="path/to/voice.wav", denoise=True)
 tts.save(audio, "cloned.wav")
+
+# Save a cloned voice and reuse it by name
+tts.add_voice("Giọng của tôi", "path/to/voice.wav")
+audio = tts.infer("Câu này dùng giọng đã lưu.", voice="Giọng của tôi")
+
+# Just clean up a clip (no synthesis)
+wav, sr = tts.denoise("noisy.wav", out_path="clean.wav")
+```
+
+> `denoise`, `add_voice`, and cloning require the PyTorch (GPU) engine; built-in voices work everywhere.
+
+### Older models (v1 / v2 — requires `pip install "vieneu[gpu]"`)
+```python
+tts = Vieneu(mode="standard")   # v2 GGUF, bilingual, podcast
+tts = Vieneu(mode="turbo")      # v2 Turbo, fastest
 ```
 
 ---
 
 ## 🔬 Model Overview
 
-| Model | Format | Device | Bilingual | Cloning | Speed |
-|---|---|---|---|---|---|
-| **VieNeu-v2-Turbo** | GGUF/ONNX | **CPU/GPU** | ✅ | ✅ Yes | **Extreme** |
-| **VieNeu-TTS-v2** | PyTorch | GPU | ✅ | ✅ Yes | **Standard** |
-| **VieNeu-TTS 0.3B** | PyTorch | GPU/CPU | ❌ | ✅ Yes | **Very Fast** |
-| **VieNeu-TTS** | PyTorch | GPU/CPU | ❌ | ✅ Yes | **Standard** |
+| Model | Engine | Device | Sample Rate | Features |
+|---|---|---|---|---|
+| **VieNeu-TTS v3 Turbo** *(default)* | ONNX (CPU) / PyTorch (GPU) | CPU/GPU | 48 kHz | Default voices, cloning, emotion cues |
+| VieNeu-TTS v2 | PyTorch / GGUF | GPU/CPU | 24 kHz | Bilingual, podcast (`[gpu]`) |
+| VieNeu-TTS v1 | PyTorch | GPU/CPU | 24 kHz | Stable, Vietnamese (`[gpu]`) |
 
 ---
 

@@ -7,8 +7,8 @@ import asyncio
 import logging
 from .base import BaseVieneuTTS
 from .utils import _linear_overlap_add
-from vieneu_utils.phonemize_text import phonemize_with_dict, phonemize_batch
-from vieneu_utils.core_utils import split_text_into_chunks, join_audio_chunks
+from vieneu_utils.phonemize_text import phonemize_with_dict, phonemize_batch, normalize_to_chunks
+from vieneu_utils.core_utils import join_audio_chunks
 
 logger = logging.getLogger("Vieneu.Remote")
 
@@ -53,10 +53,8 @@ class RemoteVieNeuTTS(BaseVieneuTTS):
 
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        if not skip_normalize:
-            text = self.normalizer.normalize(text)
-
-        chunks = split_text_into_chunks(text, max_chars=max_chars)
+        # Split TRƯỚC rồi normalize (punc_norm=True) từng chunk độc lập.
+        chunks = normalize_to_chunks(text, max_chars=max_chars, skip_normalize=skip_normalize)
         if not chunks:
             return np.array([], dtype=np.float32)
 
@@ -88,12 +86,14 @@ class RemoteVieNeuTTS(BaseVieneuTTS):
                 logger.error(f"Error during remote inference: {e}")
                 return np.array([], dtype=np.float32)
 
-        # For multiple chunks, use async for parallel processing
+        # For multiple chunks, use async for parallel processing.
+        # Truyền raw `text` + skip_normalize gốc để infer_async tự split-first +
+        # normalize (punc_norm) từng chunk.
         return asyncio.run(self.infer_async(
             text, ref_codes=ref_codes, ref_text=ref_text,
             max_chars=max_chars, silence_p=silence_p, crossfade_p=crossfade_p,
             temperature=temperature, top_k=top_k, repetition_penalty=repetition_penalty,
-            skip_normalize=True, apply_watermark=True,
+            skip_normalize=skip_normalize, apply_watermark=True,
             **kwargs
         ))
 
@@ -101,10 +101,8 @@ class RemoteVieNeuTTS(BaseVieneuTTS):
 
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        if not skip_normalize:
-            text = self.normalizer.normalize(text)
-
-        chunks = split_text_into_chunks(text, max_chars=max_chars)
+        # Split TRƯỚC rồi normalize (punc_norm=True) từng chunk độc lập.
+        chunks = normalize_to_chunks(text, max_chars=max_chars, skip_normalize=skip_normalize)
         for chunk in chunks:
             yield from self._infer_stream_chunk(chunk, ref_codes, ref_text, temperature, top_k, repetition_penalty, **kwargs)
 
@@ -187,10 +185,8 @@ class RemoteVieNeuTTS(BaseVieneuTTS):
 
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        if not skip_normalize:
-            text = self.normalizer.normalize(text)
-
-        chunks = split_text_into_chunks(text, max_chars=max_chars)
+        # Split TRƯỚC rồi normalize (punc_norm=True) từng chunk độc lập.
+        chunks = normalize_to_chunks(text, max_chars=max_chars, skip_normalize=skip_normalize)
         if not chunks:
             return np.array([], dtype=np.float32)
 
@@ -265,30 +261,27 @@ class RemoteVieNeuTTS(BaseVieneuTTS):
         except ImportError:
             raise ImportError("Async requires 'aiohttp'.")
 
-        if not skip_normalize:
-            texts = [self.normalizer.normalize(t) for t in texts]
-
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        # Pre-phonemize all for performance
         ref_phonemes = self.get_ref_phonemes(ref_text)
-        all_phonemes = phonemize_batch(texts, skip_normalize=True)
 
         sem = asyncio.Semaphore(concurrency_limit)
         async with aiohttp.ClientSession() as session:
-            async def bounded_infer(text, ph):
+            async def bounded_infer(raw_text):
                 async with sem:
-                    # Split into chunks internally if needed
-                    chunks = split_text_into_chunks(text, max_chars=max_chars)
+                    # Split TRƯỚC rồi normalize (punc_norm=True) từng chunk độc lập,
+                    # sau đó phonemize (punc_norm=True). Mỗi chunk vì thế luôn có
+                    # dấu câu kết thúc hợp lệ — không kết thúc lửng hay bằng ",".
+                    chunks = normalize_to_chunks(raw_text, max_chars=max_chars, skip_normalize=skip_normalize)
                     if not chunks: return np.array([], dtype=np.float32)
 
+                    chunk_phonemes = phonemize_batch(chunks, skip_normalize=True)
+
                     if len(chunks) == 1:
-                        wav = await self._infer_chunk_async(session, chunks[0], ref_codes, ref_text, temperature, top_k, repetition_penalty, ref_phonemes=ref_phonemes, chunk_phonemes=ph, **kwargs)
+                        wav = await self._infer_chunk_async(session, chunks[0], ref_codes, ref_text, temperature, top_k, repetition_penalty, ref_phonemes=ref_phonemes, chunk_phonemes=chunk_phonemes[0], **kwargs)
                         if apply_watermark: wav = self._apply_watermark(wav)
                         return wav
 
-                    # Re-phonemize chunks if splitting happened
-                    chunk_phonemes = phonemize_batch(chunks, skip_normalize=True)
                     tasks = [self._infer_chunk_async(session, c, ref_codes, ref_text, temperature, top_k, repetition_penalty, ref_phonemes=ref_phonemes, chunk_phonemes=c_ph, **kwargs)
                             for c, c_ph in zip(chunks, chunk_phonemes)]
                     wavs = await asyncio.gather(*tasks)
@@ -296,7 +289,7 @@ class RemoteVieNeuTTS(BaseVieneuTTS):
                     if apply_watermark: final_wav = self._apply_watermark(final_wav)
                     return final_wav
 
-            tasks = [bounded_infer(text, ph) for text, ph in zip(texts, all_phonemes)]
+            tasks = [bounded_infer(t) for t in texts]
             results = await asyncio.gather(*tasks)
 
         return results

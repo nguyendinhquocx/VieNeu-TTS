@@ -7,8 +7,8 @@ import logging
 from collections import defaultdict
 from .base import BaseVieneuTTS
 from .utils import _compile_codec_with_triton, extract_speech_ids, _linear_overlap_add, normalize_device
-from vieneu_utils.phonemize_text import phonemize_batch
-from vieneu_utils.core_utils import split_text_into_chunks, join_audio_chunks
+from vieneu_utils.phonemize_text import phonemize_batch, normalize_to_chunks
+from vieneu_utils.core_utils import join_audio_chunks
 
 logger = logging.getLogger("Vieneu.Fast")
 
@@ -128,18 +128,16 @@ class FastVieNeuTTS(BaseVieneuTTS):
 
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        if not skip_normalize:
-            text = self.normalizer.normalize(text)
-
         self.gen_config.temperature = temperature
         self.gen_config.top_k = top_k
 
-        chunks = split_text_into_chunks(text, max_chars=max_chars)
+        # Normalize TRƯỚC rồi mới chia chunk theo độ dài đã chuẩn hóa (tránh phình).
+        chunks = normalize_to_chunks(text, max_chars=max_chars, skip_normalize=skip_normalize)
         if not chunks:
             return np.array([], dtype=np.float32)
 
         if len(chunks) == 1:
-            prompt = self._format_prompt(ref_codes, ref_text, chunks[0], 
+            prompt = self._format_prompt(ref_codes, ref_text, chunks[0],
                                         use_chat_format=self.use_chat_format,
                                         emotion_tag=kwargs.get('emotion_tag'))
             responses = self.backbone([prompt], gen_config=self.gen_config, do_preprocess=False)
@@ -190,13 +188,11 @@ class FastVieNeuTTS(BaseVieneuTTS):
 
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        if not skip_normalize:
-            text = self.normalizer.normalize(text)
-
         self.gen_config.temperature = temperature
         self.gen_config.top_k = top_k
 
-        chunks = split_text_into_chunks(text, max_chars=max_chars)
+        # Normalize TRƯỚC rồi mới chia chunk theo độ dài đã chuẩn hóa (tránh phình).
+        chunks = normalize_to_chunks(text, max_chars=max_chars, skip_normalize=skip_normalize)
         for chunk in chunks:
             yield from self._infer_stream_single(chunk, ref_codes, ref_text, emotion_tag=kwargs.get('emotion_tag'))
 

@@ -7,8 +7,8 @@ import gc
 import logging
 from .base import BaseVieneuTTS
 from .utils import extract_speech_ids, _linear_overlap_add, normalize_device
-from vieneu_utils.phonemize_text import phonemize_with_dict, phonemize_batch
-from vieneu_utils.core_utils import split_text_into_chunks, join_audio_chunks
+from vieneu_utils.phonemize_text import phonemize_with_dict, phonemize_batch, normalize_to_chunks
+from vieneu_utils.core_utils import join_audio_chunks
 
 logger = logging.getLogger("Vieneu.Standard")
 
@@ -197,10 +197,8 @@ class VieNeuTTS(BaseVieneuTTS):
 
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        if not skip_normalize:
-            text = self.normalizer.normalize(text)
-
-        chunks = split_text_into_chunks(text, max_chars=max_chars)
+        # Split TRƯỚC rồi normalize (punc_norm=True) từng chunk độc lập.
+        chunks = normalize_to_chunks(text, max_chars=max_chars, skip_normalize=skip_normalize)
         if not chunks:
             return np.array([], dtype=np.float32)
 
@@ -294,10 +292,8 @@ class VieNeuTTS(BaseVieneuTTS):
 
         ref_codes, ref_text = self._resolve_ref_voice(voice, ref_audio, ref_codes, ref_text)
 
-        if not skip_normalize:
-            text = self.normalizer.normalize(text)
-
-        chunks = split_text_into_chunks(text, max_chars=max_chars)
+        # Split TRƯỚC rồi normalize (punc_norm=True) từng chunk độc lập.
+        chunks = normalize_to_chunks(text, max_chars=max_chars, skip_normalize=skip_normalize)
         if not chunks:
             return
 
@@ -336,7 +332,8 @@ class VieNeuTTS(BaseVieneuTTS):
             text_replace_idx = ids.index(text_replace)
             ids = ids[:text_replace_idx] + [text_prompt_start] + input_ids + [text_prompt_end] + ids[text_replace_idx + 1:]
 
-            ids = ids[:speech_replace] + [speech_gen_start] + list(codes)
+            speech_replace_idx = ids.index(speech_replace)
+            ids = ids[:speech_replace_idx] + [speech_gen_start] + list(codes)
         else:
             emotion_prefix_ids = self.tokenizer.encode(emotion_tag, add_special_tokens=False) if emotion_tag else []
             ids = [text_prompt_start] + emotion_prefix_ids + input_ids + [text_prompt_end, speech_gen_start] + list(codes)

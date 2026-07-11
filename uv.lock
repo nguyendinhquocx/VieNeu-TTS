@@ -3824,6 +3824,23 @@ wheels = [
 ]
 
 [[package]]
+name = "pymupdf"
+version = "1.28.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/8e/e9/6d6c5d6c0a3551bffd47681a6240caf941727f195b45593cf20ab36f018f/pymupdf-1.28.0.tar.gz", hash = "sha256:e53f3567403a92da15caa9e7ae0164327fff48817e9f40175367fb9de524258d", size = 87637751, upload-time = "2026-06-29T09:08:47.547Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c8/b7/88043e38cc7529de070f0c9bd267fa258035cca0b4ad5260536b994594a7/pymupdf-1.28.0-cp310-abi3-macosx_10_15_x86_64.whl", hash = "sha256:892b89ba88e8f98b53133b62877a9dc9b5e7dc6a4aeb837b612db56a8d2e03ac", size = 24597385, upload-time = "2026-06-29T09:03:30.608Z" },
+    { url = "https://files.pythonhosted.org/packages/33/f4/23775bbda0781b61fc398cc75079a2b0e64696d8fcf93271748883e9627e/pymupdf-1.28.0-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:4d692dcf44d3566ae96bc6f6346c6ad432274a29ba617bf7a9fe18009e24adb4", size = 23828292, upload-time = "2026-06-29T09:03:46.129Z" },
+    { url = "https://files.pythonhosted.org/packages/1c/f5/bf75fc7a415722f8b33662054f82d88520c0cbfd4c36d0e08aeaec605e49/pymupdf-1.28.0-cp310-abi3-manylinux_2_28_aarch64.whl", hash = "sha256:47a5c29ed4eb0744de9c4e37bb49b1259b18d4d75fcc8a7c130f7c9fa15956f6", size = 25045507, upload-time = "2026-06-29T09:04:03.86Z" },
+    { url = "https://files.pythonhosted.org/packages/58/69/5d12c9f1f2d76f28383d6110a069c79fbfced5a4f97bb1ee6e8354f52bb7/pymupdf-1.28.0-cp310-abi3-manylinux_2_28_x86_64.whl", hash = "sha256:44f0973f5e5edbaec95bc34b64e71d1959d4ee90b1328de1b4f4f5b4fa78673f", size = 25716599, upload-time = "2026-06-29T09:04:19.367Z" },
+    { url = "https://files.pythonhosted.org/packages/4d/b4/ec0e017bc42857cc86bd651441dbc41cc18be48d4698ecd27aac491e0c9a/pymupdf-1.28.0-cp310-abi3-musllinux_1_2_x86_64.whl", hash = "sha256:4d61ec323a706e153a12e262e51febfb43eeaa20977785ace135d18d48bcdc83", size = 25940489, upload-time = "2026-06-29T09:04:36.624Z" },
+    { url = "https://files.pythonhosted.org/packages/06/86/f831fef09013f33b3c9c09fb3923f2ff53e1e437f6ace14b8ae46392f558/pymupdf-1.28.0-cp310-abi3-win32.whl", hash = "sha256:caea2b3b67347fd79e5d15ed7929b0e886aac594ea228073b6d39de0078189da", size = 18489703, upload-time = "2026-06-29T20:50:30.599Z" },
+    { url = "https://files.pythonhosted.org/packages/2e/5d/1a03f53eb0449900469335fcfc742ca28e3ba159b7d650e0921d50b8b308/pymupdf-1.28.0-cp310-abi3-win_amd64.whl", hash = "sha256:e01e90fd86abfeb37ceb921eddb951f988a11d45ff6ce6b7664f2039849068ec", size = 19773102, upload-time = "2026-06-29T09:04:49.773Z" },
+    { url = "https://files.pythonhosted.org/packages/72/f6/1e52ce243ca792254f6223b4017c5667194c146ce9b88baf37bc5eb3d1c9/pymupdf-1.28.0-cp313-abi3-pyemscripten_2025_0_wasm32.whl", hash = "sha256:74c6d00ba2a9aad3a635db73b07c15db462b480741d831a34a75a56535ebc22b", size = 18357011, upload-time = "2026-06-29T20:50:50.353Z" },
+    { url = "https://files.pythonhosted.org/packages/62/b1/46b5b3d8ef3cc71114667cf10c4d8b33f39af97253af32e9a0986775b638/pymupdf-1.28.0-cp314-cp314t-manylinux_2_28_x86_64.whl", hash = "sha256:b3e1399c7a64c6914239116a369efcdaac4cfb9e838bde2656d7accc4a85c72d", size = 25753599, upload-time = "2026-06-29T09:05:09.398Z" },
+]
+
+[[package]]
 name = "pytest"
 version = "9.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -4572,16 +4589,16 @@ wheels = [
 
 [[package]]
 name = "sea-g2p"
-version = "0.7.5"
+version = "0.7.16"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ca/27/6cb64dd049e8ae5e95b414698501332facbccfc800a2b70ab2ba320aeba7/sea_g2p-0.7.5.tar.gz", hash = "sha256:15a0c52570858b4921c37d701a0953222f086c1d60da74e9fb92ba7e246ea8be", size = 20050359, upload-time = "2026-03-29T14:19:33.829Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/34/b7/99594319ec2dbf75a9b2c28fcddb170e26326e0050a4f922334099fcf432/sea_g2p-0.7.16.tar.gz", hash = "sha256:e70006335206136bdf0e3c96992635ae7bf54f3b5591edb88336dd2f4e6904b3", size = 20065998, upload-time = "2026-06-26T05:01:57.636Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/45/d8/49950a41df6b4ddff2e728ff4e5f3766131a96fc24ac5c51b53c434ca46c/sea_g2p-0.7.5-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:dde8a4a5e391860e830e9ca07b74d76b8b6ba287672c091fab0b1758a06e1284", size = 21372342, upload-time = "2026-03-29T14:19:14.936Z" },
-    { url = "https://files.pythonhosted.org/packages/62/85/03dd243aecc708790f2019b04bc16ddea4942e98fec638283156d940a8c3/sea_g2p-0.7.5-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:99c258534666dd0dbe75229e7fb1e52cbcf0b0a0aa267b4b1f19c35e493096ca", size = 21318662, upload-time = "2026-03-29T14:19:17.86Z" },
-    { url = "https://files.pythonhosted.org/packages/74/9b/6c2a9aa8b0f560a0179e11763d02ad0306b593cd58fbf14406c2624e7745/sea_g2p-0.7.5-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ae6dc27326e6fd978a4c18614d5a57fd85a65b06941042365f6259ea00cd102b", size = 21470484, upload-time = "2026-03-29T14:19:20.29Z" },
-    { url = "https://files.pythonhosted.org/packages/f9/90/17ede4f74794f74109b1d0c9463eed7846c2196cc8703abe7a61f2c25c95/sea_g2p-0.7.5-cp310-abi3-win32.whl", hash = "sha256:3716f078e199b8b67b8c5cc535ab77cbed025848b7b7a4bf16b22cb5d478fdb7", size = 21093572, upload-time = "2026-03-29T14:19:22.426Z" },
-    { url = "https://files.pythonhosted.org/packages/b8/3a/d427e606781f3a1d526d72ac0d2edf4cb8acd7c9567566e3565cddc895ba/sea_g2p-0.7.5-cp310-abi3-win_amd64.whl", hash = "sha256:032d949afa49eb4c447be2dab8fe67b1c72f87bfdc584698f21af85acb8fa019", size = 21204730, upload-time = "2026-03-29T14:19:24.651Z" },
-    { url = "https://files.pythonhosted.org/packages/d1/a2/d84fd9d746c096e8dc938fc0549bb32b2ecb5526d7d49d38029311be6f8c/sea_g2p-0.7.5-pp310-pypy310_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:43be4c4c5479811ea48b51a81c27da6205207e92c520c5cf4fcb588cbd4c9e0e", size = 21469777, upload-time = "2026-03-29T14:19:28.81Z" },
+    { url = "https://files.pythonhosted.org/packages/70/9f/0c950fb353c661ac6ffcff2953b3b0e1328e9bb2ef3a6c1202ad4e0e455c/sea_g2p-0.7.16-cp310-abi3-macosx_10_12_x86_64.whl", hash = "sha256:ef60313a497d2237c10d7508a45849d36e08d477a0e51935df7c813ddff1c867", size = 21399012, upload-time = "2026-06-26T05:01:43.16Z" },
+    { url = "https://files.pythonhosted.org/packages/15/f0/a37076b3f5d87804b820977075da5b5e3c7b18dbe9089928c62784998017/sea_g2p-0.7.16-cp310-abi3-macosx_11_0_arm64.whl", hash = "sha256:8f8f4b1e9cbb56ac2fabbb94a115e12e701c5c746d23b6020c7db229c10e3131", size = 21345736, upload-time = "2026-06-26T05:01:45.678Z" },
+    { url = "https://files.pythonhosted.org/packages/e2/8c/2fcc5ea5a12303aaa3b1d0d16028f0459b653e701ea256ecfebe7d465dc0/sea_g2p-0.7.16-cp310-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fa89077d980085560394c292e035175dfd8903cc64b5876866e0f10b597cd64f", size = 21508495, upload-time = "2026-06-26T05:01:47.841Z" },
+    { url = "https://files.pythonhosted.org/packages/99/98/f42227bb71000c69459b959c97e34d7ca3c9e9d9848b5e7533bf61b8b2c7/sea_g2p-0.7.16-cp310-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6c5176b87126dfb446ed03b9654c72ffd97ba3fb600d669b61ab5fcc4f13c553", size = 21522485, upload-time = "2026-06-26T05:01:50.051Z" },
+    { url = "https://files.pythonhosted.org/packages/5a/f6/74888d53005fad416a43772dc9fad195b200cf885f26c9f2b8e9a917b4c0/sea_g2p-0.7.16-cp310-abi3-win32.whl", hash = "sha256:418f258c88c2f28f73a749fead9833fb56a8bd7f8d5cf497619a9de17e5bc6c0", size = 21115891, upload-time = "2026-06-26T05:01:52.409Z" },
+    { url = "https://files.pythonhosted.org/packages/cc/35/27da38d91dce9c11c3a804b26f74a713715fe9e82f5a21b089491d19d59c/sea_g2p-0.7.16-cp310-abi3-win_amd64.whl", hash = "sha256:1ede4ba2bb167963ebf1220a91c99f759b92aabbcfa86714c6277f73b941f050", size = 21239915, upload-time = "2026-06-26T05:01:54.694Z" },
 ]
 
 [[package]]
@@ -5463,29 +5480,31 @@ wheels = [
 
 [[package]]
 name = "vieneu"
-version = "2.6.1"
+version = "3.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "gradio" },
-    { name = "librosa" },
-    { name = "llama-cpp-python", version = "0.3.16", source = { registry = "https://abetlen.github.io/llama-cpp-python/whl/metal/" }, marker = "sys_platform == 'darwin'" },
-    { name = "llama-cpp-python", version = "0.3.16", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version != '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
-    { name = "llama-cpp-python", version = "0.3.16", source = { url = "https://github.com/pnnbao97/VieNeu-TTS/releases/download/wheels-v0.3.16/llama_cpp_python-0.3.16-cp312-cp312-win_amd64.whl" }, marker = "python_full_version == '3.12.*' and sys_platform == 'win32'" },
+    { name = "huggingface-hub", version = "0.36.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and sys_platform == 'win32') or (python_full_version == '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "huggingface-hub", version = "1.13.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version == '3.11.*' and sys_platform == 'win32') or (python_full_version >= '3.13' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "numpy", version = "2.3.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "onnxruntime", version = "1.24.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "onnxruntime", version = "1.24.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "perth" },
     { name = "pyyaml" },
-    { name = "requests" },
     { name = "sea-g2p" },
     { name = "soundfile" },
-    { name = "tqdm" },
+    { name = "soxr" },
+    { name = "tokenizers" },
 ]
 
 [package.optional-dependencies]
 gpu = [
     { name = "accelerate", marker = "sys_platform == 'darwin'" },
+    { name = "librosa" },
+    { name = "llama-cpp-python", version = "0.3.16", source = { registry = "https://abetlen.github.io/llama-cpp-python/whl/metal/" }, marker = "sys_platform == 'darwin'" },
+    { name = "llama-cpp-python", version = "0.3.16", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version != '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "llama-cpp-python", version = "0.3.16", source = { url = "https://github.com/pnnbao97/VieNeu-TTS/releases/download/wheels-v0.3.16/llama_cpp_python-0.3.16-cp312-cp312-win_amd64.whl" }, marker = "python_full_version == '3.12.*' and sys_platform == 'win32'" },
     { name = "lmdeploy", version = "0.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version != '3.12.*' and sys_platform == 'linux') or (python_full_version != '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')" },
     { name = "lmdeploy", version = "0.11.0", source = { url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-manylinux2014_x86_64.whl" }, marker = "python_full_version == '3.12.*' and sys_platform == 'linux'" },
     { name = "lmdeploy", version = "0.11.0", source = { url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-win_amd64.whl" }, marker = "python_full_version == '3.12.*' and sys_platform == 'win32'" },
@@ -5494,19 +5513,30 @@ gpu = [
     { name = "torch", version = "2.8.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "sys_platform != 'darwin'" },
     { name = "torchaudio", version = "2.8.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin'" },
     { name = "torchaudio", version = "2.8.0+cu128", source = { registry = "https://download.pytorch.org/whl/cu128" }, marker = "sys_platform != 'darwin'" },
-    { name = "transformers", version = "5.7.0", source = { registry = "https://pypi.org/simple" }, marker = "sys_platform == 'darwin'" },
+    { name = "transformers", version = "4.57.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and sys_platform == 'win32') or (python_full_version == '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "transformers", version = "5.7.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version == '3.11.*' and sys_platform == 'win32') or (python_full_version >= '3.13' and sys_platform == 'win32') or sys_platform == 'darwin'" },
     { name = "triton", marker = "sys_platform == 'linux'" },
     { name = "triton-windows", marker = "sys_platform == 'win32'" },
+]
+pdf = [
+    { name = "pymupdf" },
 ]
 
 [package.dev-dependencies]
 dev = [
+    { name = "librosa" },
+    { name = "neucodec" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "transformers", version = "4.57.6", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version < '3.11' and sys_platform == 'win32') or (python_full_version == '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "transformers", version = "5.7.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version == '3.11.*' and sys_platform == 'win32') or (python_full_version >= '3.13' and sys_platform == 'win32') or sys_platform == 'darwin'" },
 ]
 gpu = [
     { name = "accelerate", marker = "sys_platform == 'darwin'" },
     { name = "datasets" },
+    { name = "llama-cpp-python", version = "0.3.16", source = { registry = "https://abetlen.github.io/llama-cpp-python/whl/metal/" }, marker = "sys_platform == 'darwin'" },
+    { name = "llama-cpp-python", version = "0.3.16", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version != '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'win32')" },
+    { name = "llama-cpp-python", version = "0.3.16", source = { url = "https://github.com/pnnbao97/VieNeu-TTS/releases/download/wheels-v0.3.16/llama_cpp_python-0.3.16-cp312-cp312-win_amd64.whl" }, marker = "python_full_version == '3.12.*' and sys_platform == 'win32'" },
     { name = "lmdeploy", version = "0.11.0", source = { registry = "https://pypi.org/simple" }, marker = "(python_full_version != '3.12.*' and sys_platform == 'linux') or (python_full_version != '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')" },
     { name = "lmdeploy", version = "0.11.0", source = { url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-manylinux2014_x86_64.whl" }, marker = "python_full_version == '3.12.*' and sys_platform == 'linux'" },
     { name = "lmdeploy", version = "0.11.0", source = { url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-win_amd64.whl" }, marker = "python_full_version == '3.12.*' and sys_platform == 'win32'" },
@@ -5526,11 +5556,12 @@ gpu = [
 requires-dist = [
     { name = "accelerate", marker = "sys_platform == 'darwin' and extra == 'gpu'" },
     { name = "gradio", specifier = ">=5.49.1" },
-    { name = "librosa", specifier = ">=0.11.0" },
-    { name = "llama-cpp-python", marker = "sys_platform != 'darwin' and sys_platform != 'win32'", specifier = "==0.3.16", index = "https://pypi.org/simple" },
-    { name = "llama-cpp-python", marker = "sys_platform == 'darwin'", specifier = "==0.3.16", index = "https://abetlen.github.io/llama-cpp-python/whl/metal/" },
-    { name = "llama-cpp-python", marker = "python_full_version != '3.12.*' and sys_platform == 'win32'", specifier = "==0.3.16" },
-    { name = "llama-cpp-python", marker = "python_full_version == '3.12.*' and sys_platform == 'win32'", url = "https://github.com/pnnbao97/VieNeu-TTS/releases/download/wheels-v0.3.16/llama_cpp_python-0.3.16-cp312-cp312-win_amd64.whl" },
+    { name = "huggingface-hub" },
+    { name = "librosa", marker = "extra == 'gpu'", specifier = ">=0.11.0" },
+    { name = "llama-cpp-python", marker = "sys_platform == 'darwin' and extra == 'gpu'", specifier = "==0.3.16", index = "https://abetlen.github.io/llama-cpp-python/whl/metal/" },
+    { name = "llama-cpp-python", marker = "sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'gpu'", specifier = "==0.3.16", index = "https://pypi.org/simple" },
+    { name = "llama-cpp-python", marker = "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'gpu'", url = "https://github.com/pnnbao97/VieNeu-TTS/releases/download/wheels-v0.3.16/llama_cpp_python-0.3.16-cp312-cp312-win_amd64.whl" },
+    { name = "llama-cpp-python", marker = "python_full_version != '3.12.*' and sys_platform == 'win32' and extra == 'gpu'", specifier = "==0.3.16" },
     { name = "lmdeploy", marker = "(python_full_version != '3.12.*' and sys_platform == 'linux' and extra == 'gpu') or (python_full_version != '3.12.*' and sys_platform == 'win32' and extra == 'gpu') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32' and extra == 'gpu')" },
     { name = "lmdeploy", marker = "python_full_version == '3.12.*' and sys_platform == 'linux' and extra == 'gpu'", url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-manylinux2014_x86_64.whl" },
     { name = "lmdeploy", marker = "python_full_version == '3.12.*' and sys_platform == 'win32' and extra == 'gpu'", url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-win_amd64.whl" },
@@ -5538,29 +5569,37 @@ requires-dist = [
     { name = "numpy" },
     { name = "onnxruntime", specifier = ">=1.20.0" },
     { name = "perth", specifier = ">=0.2.0" },
+    { name = "pymupdf", marker = "extra == 'pdf'", specifier = ">=1.25.0" },
     { name = "pyyaml" },
-    { name = "requests" },
-    { name = "sea-g2p", specifier = ">=0.7.5" },
+    { name = "sea-g2p", specifier = ">=0.7.14" },
     { name = "soundfile" },
+    { name = "soxr" },
+    { name = "tokenizers", specifier = ">=0.20" },
     { name = "torch", marker = "sys_platform == 'darwin' and extra == 'gpu'", index = "https://pypi.org/simple" },
     { name = "torch", marker = "sys_platform != 'darwin' and extra == 'gpu'", index = "https://download.pytorch.org/whl/cu128" },
     { name = "torchaudio", marker = "sys_platform == 'darwin' and extra == 'gpu'", index = "https://pypi.org/simple" },
     { name = "torchaudio", marker = "sys_platform != 'darwin' and extra == 'gpu'", index = "https://download.pytorch.org/whl/cu128" },
-    { name = "tqdm" },
-    { name = "transformers", marker = "sys_platform == 'darwin' and extra == 'gpu'" },
+    { name = "transformers", marker = "extra == 'gpu'" },
     { name = "triton", marker = "sys_platform == 'linux' and extra == 'gpu'" },
     { name = "triton-windows", marker = "sys_platform == 'win32' and extra == 'gpu'" },
 ]
-provides-extras = ["gpu"]
+provides-extras = ["gpu", "pdf"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "librosa", specifier = ">=0.11.0" },
+    { name = "neucodec", specifier = ">=0.0.4" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
+    { name = "transformers" },
 ]
 gpu = [
     { name = "accelerate", marker = "sys_platform == 'darwin'" },
     { name = "datasets", specifier = ">=3.2.0" },
+    { name = "llama-cpp-python", marker = "sys_platform != 'darwin' and sys_platform != 'win32'", specifier = "==0.3.16", index = "https://pypi.org/simple" },
+    { name = "llama-cpp-python", marker = "sys_platform == 'darwin'", specifier = "==0.3.16", index = "https://abetlen.github.io/llama-cpp-python/whl/metal/" },
+    { name = "llama-cpp-python", marker = "python_full_version != '3.12.*' and sys_platform == 'win32'", specifier = "==0.3.16" },
+    { name = "llama-cpp-python", marker = "python_full_version == '3.12.*' and sys_platform == 'win32'", url = "https://github.com/pnnbao97/VieNeu-TTS/releases/download/wheels-v0.3.16/llama_cpp_python-0.3.16-cp312-cp312-win_amd64.whl" },
     { name = "lmdeploy", marker = "(python_full_version != '3.12.*' and sys_platform == 'linux') or (python_full_version != '3.12.*' and sys_platform == 'win32') or (sys_platform != 'darwin' and sys_platform != 'linux' and sys_platform != 'win32')" },
     { name = "lmdeploy", marker = "python_full_version == '3.12.*' and sys_platform == 'linux'", url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-manylinux2014_x86_64.whl" },
     { name = "lmdeploy", marker = "python_full_version == '3.12.*' and sys_platform == 'win32'", url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-win_amd64.whl" },
