@@ -122,6 +122,25 @@ for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
 ```
 
+### Streaming thời gian thực 🔊
+
+v3 Turbo hỗ trợ **streaming theo frame**: audio ra sau ~300 ms và generator luôn *chạy vượt* player (RTF < 1 trên CPU — ~2–3× trên laptop, ~7× trên Apple Silicon), rất hợp cho ứng dụng realtime / tương tác. Chỉ cần lặp `infer_stream`:
+
+```python
+from vieneu import Vieneu
+tts = Vieneu()                                    # backbone int8, CPU
+for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+    play(chunk)                                   # np.float32 @ 48 kHz — phát/ghi ngay khi có
+```
+
+Bản demo **web streaming FastAPI** đầy đủ (player trên trình duyệt, hiện time-to-first-audio, dark mode) nằm ở [`apps/web_stream.py`](apps/web_stream.py):
+
+```bash
+uv run python -m apps.web_stream                  # → http://localhost:8001
+```
+
+> Engine chia chunk thích ứng (chunk đầu ~320 ms cho độ trễ thấp, rồi phình tới ~2 s khi đã dư lead). Vì RTF < 1 nên lead chỉ tăng dần → player prebuffer ~300 ms là dư, không underrun.
+
 ### Phong cách đọc
 
 Chọn cách đọc bằng `style` (mặc định `"tu_nhien"`):

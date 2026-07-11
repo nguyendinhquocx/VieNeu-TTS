@@ -57,6 +57,17 @@ audio = tts.infer("Bản tin sáng nay.", voice="Phạm Tuyên", style="tin_tuc"
 audio = tts.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
 ```
 
+### 🔊 Real-time streaming
+
+v3 Turbo streams frame-by-frame (first audio ~300 ms, RTF < 1 on CPU) — iterate `infer_stream`:
+
+```python
+for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+    play(chunk)   # np.float32 @ 48 kHz, play/write as it arrives
+```
+
+A full FastAPI web demo is in [`apps/web_stream.py`](apps/web_stream.py) (`uv run python -m apps.web_stream` → http://localhost:8001).
+
 ### 🦜 Zero-shot Voice Cloning
 
 Clone from a short clip; the reference is auto-denoised and trimmed to ≤ 8s.

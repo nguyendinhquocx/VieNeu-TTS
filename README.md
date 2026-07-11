@@ -145,6 +145,25 @@ for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
 ```
 
+### Streaming (real-time) 🔊
+
+v3 Turbo supports **frame-level streaming**: audio starts in ~300 ms and generation stays *ahead* of playback (RTF < 1 on CPU — ~2–3× on a laptop, ~7× on Apple Silicon), so it's ideal for realtime / interactive apps. Just iterate `infer_stream`:
+
+```python
+from vieneu import Vieneu
+tts = Vieneu()                                    # int8 backbone, CPU
+for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+    play(chunk)                                   # np.float32 @ 48 kHz — play/write as it arrives
+```
+
+A complete **FastAPI web streaming demo** (browser player, live time-to-first-audio, dark mode) is in [`apps/web_stream.py`](apps/web_stream.py):
+
+```bash
+uv run python -m apps.web_stream                  # → http://localhost:8001
+```
+
+> The engine chunks adaptively (first chunk ~320 ms for low latency, then grows to ~2 s once a playback lead is built). Because RTF < 1 the lead only grows, so a ~300 ms player prebuffer is plenty — no underruns.
+
 #### Available Voices
 
 The v3 Turbo engine includes **14 curated preset voices** covering **3 Vietnamese regions** (North, Central, South) with diverse genders and styles:
