@@ -345,7 +345,13 @@ docker run --gpus all \
 
 ## 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=pnnbao97/VieNeu-TTS&type=Date)](https://star-history.com/#pnnbao97/VieNeu-TTS&Date)
+<a href="https://www.star-history.com/?repos=pnnbao97%2FVieNeu-TTS&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=pnnbao97/VieNeu-TTS&type=date&theme=dark&legend=top-left&sealed_token=_tsrXAlf4KfIavj2geHlH_hTI3Vt6YrjXHEaMwuo0iSbNTryaItVoXiSBw4rkyhZkoiSWWW0hopsrddCfpPZciHd5LO53sX8MaFFCcmE6fQC75nhf9wzR61_wpp7cFSxvW9jvlsUOfK4XLSVhPY_ZhKMdqJXboryhvjYulUuawE5jGkAUjQRSFKKl8GK" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=pnnbao97/VieNeu-TTS&type=date&legend=top-left&sealed_token=_tsrXAlf4KfIavj2geHlH_hTI3Vt6YrjXHEaMwuo0iSbNTryaItVoXiSBw4rkyhZkoiSWWW0hopsrddCfpPZciHd5LO53sX8MaFFCcmE6fQC75nhf9wzR61_wpp7cFSxvW9jvlsUOfK4XLSVhPY_ZhKMdqJXboryhvjYulUuawE5jGkAUjQRSFKKl8GK" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=pnnbao97/VieNeu-TTS&type=date&legend=top-left&sealed_token=_tsrXAlf4KfIavj2geHlH_hTI3Vt6YrjXHEaMwuo0iSbNTryaItVoXiSBw4rkyhZkoiSWWW0hopsrddCfpPZciHd5LO53sX8MaFFCcmE6fQC75nhf9wzR61_wpp7cFSxvW9jvlsUOfK4XLSVhPY_ZhKMdqJXboryhvjYulUuawE5jGkAUjQRSFKKl8GK" />
+ </picture>
+</a>
 
 ---
 
