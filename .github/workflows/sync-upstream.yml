@@ -8,7 +8,6 @@ on:
 
 permissions:
   contents: write
-  workflows: write
 
 jobs:
   sync:
@@ -21,15 +20,28 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Fork này có 1 commit riêng (file workflow này) nên không thể fast-forward.
-          # Dùng merge -X ours: áp dụng hết changes của upstream, chỉ giữ file workflow nếu conflict.
+          # GITHUB_TOKEN không có quyền modify workflow files (security restriction).
+          # Nên merge upstream nhưng revert lại bất kỳ thay đổi nào trong .github/workflows/.
           BRANCH="${{ github.event.repository.default_branch }}"
           UPSTREAM=$(gh api "repos/$GITHUB_REPOSITORY" --jq '.parent.full_name')
           git remote add upstream "https://github.com/$UPSTREAM.git"
           git fetch upstream "$BRANCH"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # Lưu snapshot workflow files của fork trước merge
+          WORKFLOW_SNAPSHOT=$(mktemp -d)
+          if [ -d .github/workflows ]; then
+            cp -r .github/workflows "$WORKFLOW_SNAPSHOT/"
+          fi
           if git merge "upstream/$BRANCH" --no-edit -X ours; then
+            # Restore fork's workflow files (revert upstream workflow changes)
+            if [ -d "$WORKFLOW_SNAPSHOT/workflows" ]; then
+              rm -rf .github/workflows
+              mkdir -p .github
+              cp -r "$WORKFLOW_SNAPSHOT/workflows" .github/
+              git add .github/workflows
+              git diff --cached --quiet || git commit -m "chore: preserve fork workflow files"
+            fi
             git push origin "$BRANCH"
             echo "sync ok"
           else
