@@ -19,7 +19,7 @@ from typing import Optional
 
 import numpy as np
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, Response
 from pydantic import BaseModel
 import uvicorn
 
@@ -45,6 +45,7 @@ load_model()
 HTML_CONTENT = r"""<!doctype html><html lang="vi"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>VieNeu v3 Turbo (int8) — CPU Streaming</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐆</text></svg>">
 <style>
 :root{
   --bg:#f6f7fb; --card:#ffffff; --ink:#0f172a; --muted:#64748b; --line:#e5e9f0;
@@ -136,6 +137,13 @@ au.addEventListener('error',()=>{busy(false);setStatus('err','Lỗi stream — x
 @app.get("/")
 async def ui():
     return HTMLResponse(HTML_CONTENT)
+
+
+@app.get("/favicon.ico")
+async def favicon():
+    # SVG emoji favicon → tab hiện 🐆, và hết log 404 favicon.
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y="82" font-size="82">🐆</text></svg>'
+    return Response(svg, media_type="image/svg+xml")
 
 
 @app.get("/voices")
