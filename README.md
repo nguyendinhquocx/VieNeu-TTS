@@ -100,6 +100,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 The `vieneu` SDK **defaults to VieNeu-TTS v3 Turbo (48 kHz)**. The minimal install is **torch-free**: on CPU everything runs on **ONNX Runtime** (PyTorch is never imported), and on a CUDA machine it auto-switches to the PyTorch engine. Older models (v1/v2) are available via the `[gpu]` extra.
 
+> ⚡ **On CPU the backbone runs `int8` by default** — ~1.6× faster and ~4× smaller than fp32, with voice quality preserved. Want maximum fidelity instead? Pass `Vieneu(precision="fp32")` (slower on CPU). `precision` only affects the CPU/ONNX path; on GPU it's ignored (PyTorch).
+>
+> ```python
+> tts = Vieneu()                    # int8 backbone (default, fastest on CPU)
+> tts = Vieneu(precision="fp32")    # fp32 backbone (max quality, slower on CPU)
+> ```
+
 ### Quick Start
 ```bash
 pip install vieneu
@@ -136,6 +143,23 @@ voices = tts.list_preset_voices()
 print(f"\n🎙️  {len(voices)} built-in voices available:")
 for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
+```
+
+#### Streaming (real-time) 🔊
+
+v3 Turbo supports **frame-level streaming**: audio starts in ~300 ms and generation stays *ahead* of playback (RTF < 1 on CPU — ~2–3× on a laptop, ~7× on Apple Silicon), so it's ideal for realtime / interactive apps. Just iterate `infer_stream`:
+
+```python
+from vieneu import Vieneu
+tts = Vieneu()                                    # int8 backbone, CPU
+for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+    play(chunk)                                   # np.float32 @ 48 kHz — play/write as it arrives
+```
+
+A complete **FastAPI web streaming demo** (browser player, live time-to-first-audio, dark mode) is in [`apps/web_stream.py`](apps/web_stream.py):
+
+```bash
+uv run python -m apps.web_stream                  # → http://127.0.0.1:8001
 ```
 
 #### Available Voices

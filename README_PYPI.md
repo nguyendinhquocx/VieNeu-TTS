@@ -8,6 +8,7 @@
 ## ✨ Key Features
 - **v3 Turbo, 48 kHz** — high-fidelity, natural Vietnamese speech (default).
 - **Torch-free on CPU** — minimal install runs on ONNX Runtime; PyTorch is never imported.
+- **int8 backbone by default on CPU** — ~1.6× faster & ~4× smaller than fp32, quality preserved. Use `Vieneu(precision="fp32")` for max fidelity.
 - **Built-in default voices** — call them by name, no reference clip needed.
 - **Instant voice cloning** — clone any voice from 3–5s of audio.
 - **Emotion cues** *(experimental)* — drop `[cười]`, `[thở dài]`, `[hắng giọng]` into the text.
@@ -33,7 +34,9 @@ pip install "vieneu[gpu]"
 from vieneu import Vieneu
 
 # Default = v3 Turbo (48 kHz). GPU → PyTorch (auto-detected).
-tts = Vieneu()
+# On CPU the backbone runs int8 by default (fastest); pass precision="fp32" for max quality.
+tts = Vieneu()                    # int8 backbone (default, fastest on CPU)
+# tts = Vieneu(precision="fp32")  # fp32 backbone (max quality, slower on CPU)
 
 # 1. Built-in voice by name — no reference needed
 print("🔊 Generating speech...")
@@ -53,6 +56,17 @@ audio = tts.infer("Bản tin sáng nay.", voice="Phạm Tuyên", style="tin_tuc"
 # 3. Emotion / non-verbal cues — EXPERIMENTAL: [cười] [thở dài] [hắng giọng]
 audio = tts.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
 ```
+
+### 🔊 Real-time streaming
+
+v3 Turbo streams frame-by-frame (first audio ~300 ms, RTF < 1 on CPU) — iterate `infer_stream`:
+
+```python
+for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+    play(chunk)   # np.float32 @ 48 kHz, play/write as it arrives
+```
+
+A full FastAPI web demo is in [`apps/web_stream.py`](apps/web_stream.py) (`uv run python -m apps.web_stream` → http://localhost:8001).
 
 ### 🦜 Zero-shot Voice Cloning
 

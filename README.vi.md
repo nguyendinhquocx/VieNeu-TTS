@@ -87,6 +87,13 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 SDK `vieneu` **mặc định dùng VieNeu-TTS v3 Turbo (48 kHz)**. Bản cài tối giản **không cần torch**: trên CPU mọi thứ chạy bằng **ONNX Runtime** (PyTorch không bao giờ được import), còn trên máy CUDA nó tự chuyển sang engine PyTorch. Các model cũ (v1/v2) có trong extra `[gpu]`.
 
+> ⚡ **Trên CPU, backbone chạy `int8` theo mặc định** — nhanh ~1.6× và nhẹ ~4× so với fp32, chất giọng vẫn giữ nguyên. Cần chất lượng tối đa? Truyền `Vieneu(precision="fp32")` (chậm hơn trên CPU). `precision` chỉ ảnh hưởng đường CPU/ONNX; trên GPU nó bị bỏ qua (PyTorch).
+>
+> ```python
+> tts = Vieneu()                    # backbone int8 (mặc định, nhanh nhất trên CPU)
+> tts = Vieneu(precision="fp32")    # backbone fp32 (chất lượng tối đa, chậm hơn trên CPU)
+> ```
+
 ### Bắt đầu nhanh
 ```bash
 # Cài tối giản, KHÔNG TORCH — chạy v3 Turbo trên CPU bằng ONNX Runtime
@@ -114,6 +121,25 @@ print(f"\n🎙️  Có {len(voices)} giọng dựng sẵn:")
 for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
 ```
+
+### Streaming thời gian thực 🔊
+
+v3 Turbo hỗ trợ **streaming theo frame**: audio ra sau ~300 ms và generator luôn *chạy vượt* player (RTF < 1 trên CPU — ~2–3× trên laptop, ~7× trên Apple Silicon), rất hợp cho ứng dụng realtime / tương tác. Chỉ cần lặp `infer_stream`:
+
+```python
+from vieneu import Vieneu
+tts = Vieneu()                                    # backbone int8, CPU
+for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+    play(chunk)                                   # np.float32 @ 48 kHz — phát/ghi ngay khi có
+```
+
+Bản demo **web streaming FastAPI** đầy đủ (player trên trình duyệt, hiện time-to-first-audio, dark mode) nằm ở [`apps/web_stream.py`](apps/web_stream.py):
+
+```bash
+uv run python -m apps.web_stream                  # → http://localhost:8001
+```
+
+> Engine chia chunk thích ứng (chunk đầu ~320 ms cho độ trễ thấp, rồi phình tới ~2 s khi đã dư lead). Vì RTF < 1 nên lead chỉ tăng dần → player prebuffer ~300 ms là dư, không underrun.
 
 ### Phong cách đọc
 
