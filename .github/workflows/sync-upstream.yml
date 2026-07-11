@@ -40,8 +40,9 @@ jobs:
             git commit --no-edit --no-verify || true
           fi
           # Preserve .github/workflows/ về PRE_MERGE state (loại mọi change của upstream)
+          # git rm -rf để remove cả files mới upstream add (không có ở PRE_MERGE)
+          git rm -rf .github/workflows/ 2>/dev/null || true
           git checkout "$PRE_MERGE" -- .github/workflows/ 2>/dev/null || true
-          git clean -fd .github/workflows/ 2>/dev/null || true
           git add -A
           git diff --cached --quiet HEAD || git commit -m "chore: preserve fork workflow files" --no-verify || true
           git push origin "$BRANCH"
