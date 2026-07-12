@@ -20,7 +20,7 @@ from typing import Optional
 
 import numpy as np
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, StreamingResponse, Response
+from fastapi.responses import FileResponse, StreamingResponse, Response
 from pydantic import BaseModel
 import uvicorn
 
@@ -32,18 +32,6 @@ tts = None
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 CLIENT_HTML_PATH = ROOT_DIR / "client" / "client.html"
-
-
-def load_html_content() -> str:
-    if CLIENT_HTML_PATH.exists():
-        content = CLIENT_HTML_PATH.read_text(encoding="utf-8")
-        if content.lstrip().startswith("HTML_CONTENT = r\"\"\""):
-            start = content.find('r"""') + len('r"""')
-            end = content.rfind('"""')
-            if 0 < start < end:
-                return content[start:end]
-        return content
-    return "<!doctype html><html><body><h1>client.html not found</h1></body></html>"
 
 
 def load_model():
@@ -58,7 +46,9 @@ load_model()
 
 @app.get("/")
 async def ui():
-    return HTMLResponse(load_html_content())
+    if CLIENT_HTML_PATH.exists():
+        return FileResponse(CLIENT_HTML_PATH, media_type="text/html")
+    return Response("client.html not found", status_code=404, media_type="text/plain")
 
 
 @app.get("/favicon.ico")
