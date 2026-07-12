@@ -88,17 +88,74 @@ fetch('/voices').then(r=>r.json()).then(v=>{const s=$('voice');s.innerHTML='';
 function setStatus(kind,msg){dot.className='dot'+(kind?' '+kind:'');st.textContent=msg;}
 function busy(on){btn.disabled=on;spin.style.display=on?'block':'none';btxt.textContent=on?'Đang tạo…':'▶ Đọc (Stream)';}
 let t0=0,got=false;
+const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+const audioCtx = new AudioContextClass();
+let playHead = audioCtx.currentTime + 0.1;
+
+async function streamViaFetch(text, voice){
+  const url = '/stream?text='+encodeURIComponent(text)+'&voice_id='+encodeURIComponent(voice);
+  let resp;
+  try{
+    resp = await fetch(url);
+  }catch(e){ busy(false); setStatus('err','Fetch failed: '+e); return; }
+  if(!resp.ok){ busy(false); setStatus('err','HTTP '+resp.status); return; }
+  const reader = resp.body && resp.body.getReader();
+  if(!reader){ busy(false); setStatus('err','Streaming not supported'); return; }
+  const SAMPLE_RATE = 48000;
+  let headerConsumed = false;
+  let leftover = new Uint8Array(0);
+  t0 = performance.now();
+  try{
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      let chunk = value;
+      if(!headerConsumed){
+        // accumulate until we have the full 44-byte WAV header
+        const combined = new Uint8Array(leftover.length + chunk.length);
+        combined.set(leftover, 0);
+        combined.set(chunk, leftover.length);
+        if(combined.length < 44){ leftover = combined; continue; }
+        // strip header
+        const data = combined.slice(44);
+        headerConsumed = true;
+        processPCM(data, SAMPLE_RATE);
+      }else{
+        processPCM(chunk, SAMPLE_RATE);
+      }
+      if(!got){ got = true; const ms = Math.round(performance.now()-t0); ttfa.textContent='⚡ '+ms+' ms'; busy(false); setStatus('play','Đang phát'); }
+    }
+    setStatus('','Xong');
+  }catch(e){ setStatus('err','Stream error: '+e); }
+}
+
+function processPCM(uint8arr, sampleRate){
+  if(!uint8arr || uint8arr.length === 0) return;
+  // PCM16 LE -> Float32
+  // Use the underlying ArrayBuffer with correct byteOffset/byteLength to create DataView
+  const view = new DataView(uint8arr.buffer, uint8arr.byteOffset, uint8arr.byteLength);
+  const n = Math.floor(uint8arr.byteLength / 2);
+  const float32 = audioCtx.createBuffer(1, n, sampleRate);
+  const ch = float32.getChannelData(0);
+  for(let i=0;i<n;i++){ const val = view.getInt16(i*2, true); ch[i] = Math.max(-1, Math.min(1, val / 32768)); }
+  const src = audioCtx.createBufferSource();
+  src.buffer = float32;
+  src.connect(audioCtx.destination);
+  const startAt = Math.max(playHead, audioCtx.currentTime + 0.05);
+  src.start(startAt);
+  playHead = startAt + float32.duration;
+}
+
 function go(){
   const t=txt.value.trim(); if(!t)return;
   const v=$('voice').value;
-  busy(true); got=false; ttfa.textContent=''; setStatus('gen','Đang tạo giọng…'); t0=performance.now();
-  au.src='/stream?text='+encodeURIComponent(t)+'&voice_id='+encodeURIComponent(v);
-  au.play().catch(()=>{});
+  busy(true); got=false; ttfa.textContent=''; setStatus('gen','Đang tạo giọng…');
+  // resume audio context on user gesture
+  audioCtx.resume().then(()=>{
+    playHead = audioCtx.currentTime + 0.1;
+    streamViaFetch(t, v);
+  }).catch(()=>{ streamViaFetch(t, v); });
 }
-au.addEventListener('playing',()=>{ if(!got){got=true; const ms=Math.round(performance.now()-t0);
-  ttfa.textContent='⚡ '+ms+' ms'; } busy(false); setStatus('play','Đang phát'); });
-au.addEventListener('ended',()=>setStatus('','Xong'));
-au.addEventListener('error',()=>{busy(false);setStatus('err','Lỗi stream — xem log server');});
 </script>
 </body>
 </html>
