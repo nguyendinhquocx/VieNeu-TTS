@@ -8,7 +8,7 @@ không underrun — chỉ cần player prebuffer ~300–500ms.
     uv run python -m apps.web_stream        # http://127.0.0.1:8001
 
 Public API dùng ở đây:
-    tts = Vieneu()                                  # v3 Turbo int8, CPU
+    tts = Vieneu(backend="onnx")                    # v3 Turbo int8, ép CPU/ONNX
     for chunk in tts.infer_stream(text, voice="Minh Đức"):
         ...                                         # np.float32 @ 48kHz, phát/ghi dần
 """
@@ -37,7 +37,8 @@ CLIENT_HTML_PATH = ROOT_DIR / "client" / "client.html"
 def load_model():
     global tts
     print("⏳ Loading VieNeu-TTS v3 Turbo (int8, CPU)...")
-    tts = Vieneu()  # == Vieneu(mode="v3turbo", precision="int8")
+    # backend="onnx" ép đường ONNX/CPU int8. KHÔNG để device="auto" (mặc định):
+    tts = Vieneu(backend="onnx")  # == Vieneu(mode="v3turbo", backend="onnx", precision="int8")
     print(f"✅ Ready. Backbone: int8 | intra_op threads: {getattr(tts.engine, 'ort_intra_op_threads', '?')}")
 
 
