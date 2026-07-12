@@ -471,6 +471,7 @@ class OnnxV3LiteEngine:
         rows = self._build_rows(phonemes, ref_codes, style_id)
         prompt_embeds = self._embed_rows(rows, anchor)
 
+        # Acquire initial prefill under lock, then do per-iteration ONNX calls
         with self._lock:
             pre = self.sess_pre.run(None, {"inputs_embeds": prompt_embeds})
             past_k = [pre[1 + i] for i in range(self.L)]
@@ -478,26 +479,30 @@ class OnnxV3LiteEngine:
             h = pre[0][:, -1]
             Tprompt = prompt_embeds.shape[1]
             hist = [set() for _ in range(self.n_vq)] if not math.isclose(repetition_penalty, 1.0) else None
-            state = self._stream_new_state()
-            buffer: List[np.ndarray] = []
-            sr = self.SAMPLE_RATE
-            emitted = 0
-            t_first: Optional[float] = None
 
-            def _target() -> int:
-                cap = max(1, chunk_frames)
-                if t_first is None:
-                    return min(cap, _STREAM_LEADIN_FRAMES)
-                lead = emitted / sr - (time.perf_counter() - t_first)
-                if lead < 0.20:
-                    return min(cap, _STREAM_LEADIN_FRAMES)
-                if lead < 0.55:
-                    return min(cap, 6)
-                if lead < 1.10:
-                    return min(cap, 8)
-                return cap
+        state = self._stream_new_state()
+        buffer: List[np.ndarray] = []
+        sr = self.SAMPLE_RATE
+        emitted = 0
+        t_first: Optional[float] = None
 
-            for t in range(max_new_frames):
+        def _target() -> int:
+            cap = max(1, chunk_frames)
+            if t_first is None:
+                return min(cap, _STREAM_LEADIN_FRAMES)
+            lead = emitted / sr - (time.perf_counter() - t_first)
+            if lead < 0.20:
+                return min(cap, _STREAM_LEADIN_FRAMES)
+            if lead < 0.55:
+                return min(cap, 6)
+            if lead < 1.10:
+                return min(cap, 8)
+            return cap
+
+        for t in range(max_new_frames):
+            wav_chunk = None
+            # protect ONNX session calls per-iteration; release before yielding
+            with self._lock:
                 codes, eos = self._acoustic_frame(h, temperature, top_k, top_p, repetition_penalty, hist)
                 buffer.append(np.asarray(codes, dtype=np.int64))
                 if not eos:
@@ -514,19 +519,23 @@ class OnnxV3LiteEngine:
                     past_k = [out[1 + i] for i in range(self.L)]
                     past_v = [out[1 + self.L + i] for i in range(self.L)]
                 if len(buffer) >= _target() or eos:
-                    wav = self._stream_decode(np.stack(buffer), state)
+                    wav_chunk = self._stream_decode(np.stack(buffer), state)
                     buffer = []
-                    if wav.size:
-                        if t_first is None:
-                            t_first = time.perf_counter()
-                        emitted += wav.size
-                        yield wav
-                if eos:
-                    break
-            if buffer:
+
+            # yield after the lock is released
+            if wav_chunk is not None and wav_chunk.size:
+                if t_first is None:
+                    t_first = time.perf_counter()
+                emitted += wav_chunk.size
+                yield wav_chunk
+            if eos:
+                break
+
+        if buffer:
+            with self._lock:
                 wav = self._stream_decode(np.stack(buffer), state)
-                if wav.size:
-                    yield wav
+            if wav.size:
+                yield wav
 
     # ── codec (MOSS ONNX) ──────────────────────────────────────────────────────
     def _decode_codes(self, codes: np.ndarray) -> np.ndarray:

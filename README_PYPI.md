@@ -18,13 +18,26 @@
 
 ## 📦 Install
 
-```bash
-# Minimal, TORCH-FREE — runs v3 Turbo on CPU via ONNX Runtime
-pip install vieneu
+**CPU (default)** — torch-free, runs v3 Turbo via ONNX Runtime. Most users want this:
 
-# Optional: GPU + older backends (v1/v2 PyTorch & GGUF, v3 Turbo on GPU)
-pip install "vieneu[gpu]"
+```bash
+pip install vieneu
 ```
+
+**GPU (CUDA)** — only if you have an NVIDIA GPU. Install a CUDA build of PyTorch
+**yourself first**. Batching then turns on automatically on CUDA — same API, no code change:
+
+```bash
+pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+pip install "transformers==4.57.6"   # Qwen3 backbone + MOSS codec (pinned — most stable for the GPU SDK)
+pip install vieneu
+```
+
+> ℹ️ **When is GPU actually worth it?** The GPU win comes from **batching**, so it
+> only pays off on **long text** (many chunks generated together in one forward —
+> long-form or bulk synthesis). For **short text** the torch-free **CPU/ONNX** path
+> is usually *faster* (there's no batch to fill). Use CPU for short, interactive
+> calls; reach for GPU for long-form or high-throughput work.
 
 ---
 
@@ -55,13 +68,34 @@ audio = tts.infer("Bản tin sáng nay.", voice="Phạm Tuyên", style="tin_tuc"
 
 # 3. Emotion / non-verbal cues — EXPERIMENTAL: [cười] [thở dài] [hắng giọng]
 audio = tts.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
+
+# 4. ⚡ Batch on GPU: infer_batch() runs many texts in ONE batched forward — same API.
+#    On a CUDA GPU the chunks from every text share each forward step (big throughput
+#    win); on CPU it still works (no error), just sequentially. Batch caps at
+#    max_batch_size (default 32; or infer_batch(..., batch_size=64); batch_size=1
+#    disables). A single long infer() also auto-batches its own chunks. Uncomment to try:
+#
+# import time
+# texts = [
+#     "Chào cả nhà, hôm nay mình sẽ hướng dẫn các bạn cách cài đặt và sử dụng bộ giọng đọc mới.",
+#     "Giọng nghe cực kỳ tự nhiên và truyền cảm, lại có thể chuyển đổi biểu cảm một cách linh hoạt.",
+#     "Nếu thấy hữu ích, các bạn nhớ để lại một lượt thích và chia sẻ video này cho mọi người nhé!",
+# ] * 10   # 30 texts — enough to fill the batch and really show the GPU throughput win
+# t0 = time.time()
+# audios = tts.infer_batch(texts, voice="Phạm Tuyên")
+# elapsed = time.time() - t0
+# total_audio = sum(len(a) for a in audios) / 48_000
+# print(f"⚡ {len(texts)} texts | audio {total_audio:.1f}s | wall {elapsed:.1f}s | RTF {elapsed/total_audio:.3f}")
+# for i, a in enumerate(audios):
+#     tts.save(a, f"batch_{i}.wav")
 ```
 
 ### 🔊 Real-time streaming
 
-v3 Turbo streams frame-by-frame (first audio ~300 ms, RTF < 1 on CPU) — iterate `infer_stream`:
+v3 Turbo streams frame-by-frame (first audio ~300 ms, RTF < 1 on CPU). Streaming runs on the **ONNX/CPU** engine — the GPU/PyTorch engine is for **batch throughput**, not streaming, so pin `backend="onnx"` for realtime. Iterate `infer_stream`:
 
 ```python
+tts = Vieneu(backend="onnx")   # force ONNX/CPU — the streaming path (int8)
 for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
     play(chunk)   # np.float32 @ 48 kHz, play/write as it arrives
 ```
@@ -90,12 +124,6 @@ wav, sr = tts.denoise("noisy.wav", out_path="clean.wav")
 
 > `denoise`, `add_voice`, and cloning require the PyTorch (GPU) engine; built-in voices work everywhere.
 
-### Older models (v1 / v2 — requires `pip install "vieneu[gpu]"`)
-```python
-tts = Vieneu(mode="standard")   # v2 GGUF, bilingual, podcast
-tts = Vieneu(mode="turbo")      # v2 Turbo, fastest
-```
-
 ---
 
 ## 🔬 Model Overview
@@ -103,8 +131,6 @@ tts = Vieneu(mode="turbo")      # v2 Turbo, fastest
 | Model | Engine | Device | Sample Rate | Features |
 |---|---|---|---|---|
 | **VieNeu-TTS v3 Turbo** *(default)* | ONNX (CPU) / PyTorch (GPU) | CPU/GPU | 48 kHz | Default voices, cloning, emotion cues |
-| VieNeu-TTS v2 | PyTorch / GGUF | GPU/CPU | 24 kHz | Bilingual, podcast (`[gpu]`) |
-| VieNeu-TTS v1 | PyTorch | GPU/CPU | 24 kHz | Stable, Vietnamese (`[gpu]`) |
 
 ---
 

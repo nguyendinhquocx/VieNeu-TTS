@@ -81,8 +81,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
      ```bash
      uv sync
      ```
-   - **Option 2: GPU** — **v3 Turbo (PyTorch) + VieNeu-TTS v2 (GPU)**
-     > 💡 *Requires a CUDA NVIDIA GPU (CUDA ≥ 12.8) or Apple Silicon MPS. [NVIDIA Toolkit](https://developer.nvidia.com/cuda-downloads) recommended. Adds the PyTorch stack so **v3 Turbo runs on GPU** and the **v1 / v2 (GPU)** models become available.*
+   - **Option 2: GPU** — **v3 Turbo on GPU (PyTorch)**
+     > 💡 *Requires a CUDA NVIDIA GPU (CUDA ≥ 12.8) or Apple Silicon MPS. [NVIDIA Toolkit](https://developer.nvidia.com/cuda-downloads) recommended. Adds the PyTorch stack so **v3 Turbo runs on GPU** — inference is batched automatically on CUDA (same API, no code change).*
 
      ```bash
      uv sync --group gpu
@@ -98,17 +98,27 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ## 📦 2. Using the Python SDK (vieneu) <a name="sdk"></a>
 
-The `vieneu` SDK **defaults to VieNeu-TTS v3 Turbo (48 kHz)**. The minimal install is **torch-free**: on CPU everything runs on **ONNX Runtime** (PyTorch is never imported), and on a CUDA machine it auto-switches to the PyTorch engine. Older models (v1/v2) are available via the `[gpu]` extra.
-
-> ⚡ **On CPU the backbone runs `int8` by default** — ~1.6× faster and ~4× smaller than fp32, with voice quality preserved. Want maximum fidelity instead? Pass `Vieneu(precision="fp32")` (slower on CPU). `precision` only affects the CPU/ONNX path; on GPU it's ignored (PyTorch).
->
-> ```python
-> tts = Vieneu()                    # int8 backbone (default, fastest on CPU)
-> tts = Vieneu(precision="fp32")    # fp32 backbone (max quality, slower on CPU)
-> ```
+The `vieneu` SDK **defaults to VieNeu-TTS v3 Turbo (48 kHz)**. The minimal install is **torch-free**: on CPU everything runs on **ONNX Runtime** (PyTorch is never imported), and on a CUDA machine it auto-switches to the PyTorch engine — where inference is **batched automatically** (same API, no code change).
 
 ### Quick Start
+
+**CPU (default)** — torch-free, runs v3 Turbo via ONNX Runtime. Most users want this:
+> ⚡**On CPU the backbone runs `int8` by default** — ~1.6× faster and ~4× smaller than fp32, with voice quality preserved. Want maximum fidelity instead? Pass `Vieneu(precision="fp32")` (slower on CPU). `precision` only affects the CPU/ONNX path; on GPU it's ignored (PyTorch).
+
 ```bash
+pip install vieneu
+```
+
+**GPU (CUDA)** — only if you have an NVIDIA GPU. 
+> ℹ️ **When is GPU actually worth it?** The GPU win comes from **batching**, so it
+> only pays off on **long text** (many chunks generated together in one forward —
+> long-form or bulk synthesis). For **short text** the torch-free **CPU/ONNX** path
+> is usually *faster* (there's no batch to fill, and no kernel-launch overhead). Use
+> CPU for short, interactive calls; reach for GPU for long-form or high-throughput work.
+
+```bash
+pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cu128
+pip install "transformers==4.57.6"   # pinned — most stable transformers for the GPU SDK
 pip install vieneu
 ```
 
@@ -143,16 +153,37 @@ voices = tts.list_preset_voices()
 print(f"\n🎙️  {len(voices)} built-in voices available:")
 for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
+
+# 2. ⚡ Batch on GPU: infer_batch() runs many texts in ONE batched forward — same API.
+#    On a CUDA GPU the chunks from every text share each forward step (big throughput
+#    win). On CPU it still WORKS (no error) — just sequentially, so there's no batch
+#    gain. Batch caps at max_batch_size (default 32; tune via Vieneu(max_batch_size=64)
+#    or infer_batch(..., batch_size=64), or batch_size=1 to disable). A single long
+#    infer() also auto-batches its own chunks. Uncomment to try (GPU recommended):
+#
+# import time
+# texts = [
+#     "Chào cả nhà, hôm nay mình sẽ hướng dẫn các bạn cách cài đặt và sử dụng bộ giọng đọc mới.",
+#     "Giọng nghe cực kỳ tự nhiên và truyền cảm, lại có thể chuyển đổi biểu cảm một cách linh hoạt.",
+#     "Nếu thấy hữu ích, các bạn nhớ để lại một lượt thích và chia sẻ video này cho mọi người nhé!",
+# ] * 10   # 30 texts — enough to fill the batch and really show the GPU throughput win
+# t0 = time.time()
+# audios = tts.infer_batch(texts, voice="Phạm Tuyên")
+# elapsed = time.time() - t0
+# total_audio = sum(len(a) for a in audios) / 48_000
+# print(f"⚡ {len(texts)} texts | audio {total_audio:.1f}s | wall {elapsed:.1f}s | RTF {elapsed/total_audio:.3f}")
+# for i, a in enumerate(audios):
+#     tts.save(a, f"batch_{i}.wav")
 ```
 
 #### Streaming (real-time) 🔊
 
-v3 Turbo supports **frame-level streaming**: audio starts in ~300 ms and generation stays *ahead* of playback (RTF < 1 on CPU — ~2–3× on a laptop, ~7× on Apple Silicon), so it's ideal for realtime / interactive apps. Just iterate `infer_stream`:
+> v3 Turbo supports **frame-level streaming**: audio starts in ~300 ms and generation stays *ahead* of playback (RTF < 1 on CPU — ~2–3× on a laptop, ~7× on Apple Silicon), so it's ideal for realtime / interactive apps. Streaming runs on the > **ONNX/CPU** engine — low first-audio latency, frame-by-frame; the GPU/PyTorch engine is built for **batch throughput**, not streaming, so pin `backend="onnx"` for realtime. Just iterate `infer_stream`:
 
 ```python
 from vieneu import Vieneu
-tts = Vieneu()                                    # int8 backbone, CPU
-for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+tts = Vieneu(backend="onnx")                      # force ONNX/CPU — the streaming path (int8)
+for chunk in tts.infer_stream("Xin chào các bạn!", voice="Minh Đức"):
     play(chunk)                                   # np.float32 @ 48 kHz — play/write as it arrives
 ```
 
@@ -264,7 +295,7 @@ Once the server is running, you can connect from anywhere (Colab, Web Apps, etc.
 
 **Installation**:
 ```bash
-pip install "vieneu[gpu]"
+pip install "vieneu[legacy]"
 ```
 
 **Usage**:
