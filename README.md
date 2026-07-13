@@ -127,16 +127,16 @@ import time
 from vieneu import Vieneu
 
 # Default = v3 Turbo (48 kHz). GPU → PyTorch (auto-detected).
-tts = Vieneu()
+vieneu = Vieneu() # On a GPU machine you can still switch to ONNX/CPU if you prefer: Vieneu(backend="onnx")
 
 # 1. Built-in voice by name — no reference clip needed
 print("🔊 Generating speech...")
 
 start_time = time.time()
-audio = tts.infer("[cười] Trời ơi, cái giọng nó tự nhiên mà nó mượt mà dã man, nghe không khác gì người thật luôn. Giờ thì tha hồ mà quẩy content với cả kho giọng nói đa dạng, đủ mọi sắc thái biểu cảm. Mọi người bật loa lên rồi cùng trải nghiệm thử với mình nhé!", voice="Phạm Tuyên")
+audio = vieneu.infer("[cười] Trời ơi, cái giọng nó tự nhiên mà nó mượt mà dã man, nghe không khác gì người thật luôn. Giờ thì tha hồ mà quẩy content với cả kho giọng nói đa dạng, đủ mọi sắc thái biểu cảm. Mọi người bật loa lên rồi cùng trải nghiệm thử với mình nhé!", voice="Phạm Tuyên")
 elapsed_time = time.time() - start_time
 
-tts.save(audio, "output.wav")
+vieneu.save(audio, "output.wav")
 print("✅ Saved to output.wav")
 
 # Tính RTF (Real-Time Factor)
@@ -149,7 +149,7 @@ print(f"🎵 Thời lượng audio: {audio_duration:.3f}s")
 print(f"📊 RTF: {rtf:.4f}  ({'nhanh hơn' if rtf < 1 else 'chậm hơn'} real-time {1/rtf:.2f}x)" if rtf > 0 else "")
 
 # List the built-in voices
-voices = tts.list_preset_voices()
+voices = vieneu.list_preset_voices()
 print(f"\n🎙️  {len(voices)} built-in voices available:")
 for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
@@ -168,12 +168,12 @@ for label, voice_id in voices:
 #     "Nếu thấy hữu ích, các bạn nhớ để lại một lượt thích và chia sẻ video này cho mọi người nhé!",
 # ] * 10   # 30 texts — enough to fill the batch and really show the GPU throughput win
 # t0 = time.time()
-# audios = tts.infer_batch(texts, voice="Phạm Tuyên")
+# audios = vieneu.infer_batch(texts, voice="Phạm Tuyên")
 # elapsed = time.time() - t0
 # total_audio = sum(len(a) for a in audios) / 48_000
 # print(f"⚡ {len(texts)} texts | audio {total_audio:.1f}s | wall {elapsed:.1f}s | RTF {elapsed/total_audio:.3f}")
 # for i, a in enumerate(audios):
-#     tts.save(a, f"batch_{i}.wav")
+#     vieneu.save(a, f"batch_{i}.wav")
 ```
 
 #### Streaming (real-time) 🔊
@@ -182,8 +182,8 @@ for label, voice_id in voices:
 
 ```python
 from vieneu import Vieneu
-tts = Vieneu(backend="onnx")                      # force ONNX/CPU — the streaming path (int8)
-for chunk in tts.infer_stream("Xin chào các bạn!", voice="Minh Đức"):
+vieneu = Vieneu(backend="onnx")                      # force ONNX/CPU — the streaming path (int8)
+for chunk in vieneu.infer_stream("Xin chào các bạn!", voice="Minh Đức"):
     play(chunk)                                   # np.float32 @ 48 kHz — play/write as it arrives
 ```
 
@@ -214,7 +214,7 @@ Pick how the text is read with `style` (default `"tu_nhien"`):
 | `"doc_truyen"` | Storytelling  |
 
 ```python
-audio = tts.infer("Trận Caen là một trận đánh trong Chiến tranh Trăm Năm giữa Anh và Pháp diễn ra vào ngày 26 tháng 7 năm 1346 khi quân viễn chinh Anh dưới sự chỉ huy của Edward III tấn công thành Caen do quân Pháp nắm giữ.", voice="Phạm Tuyên", style="tin_tuc")
+audio = vieneu.infer("Trận Caen là một trận đánh trong Chiến tranh Trăm Năm giữa Anh và Pháp diễn ra vào ngày 26 tháng 7 năm 1346 khi quân viễn chinh Anh dưới sự chỉ huy của Edward III tấn công thành Caen do quân Pháp nắm giữ.", voice="Phạm Tuyên", style="tin_tuc")
 ```
 
 ### Emotion cues (experimental)
@@ -222,7 +222,7 @@ audio = tts.infer("Trận Caen là một trận đánh trong Chiến tranh Trăm
 Inline tags are supported anywhere in the text: `[cười]` (chuckle), `[thở dài]` (sigh), `[hắng giọng]` (clear throat).
 
 ```python
-audio = tts.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Trúc Ly")
+audio = vieneu.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Trúc Ly")
 ```
 
 ### Voice cloning
@@ -232,13 +232,13 @@ Clone any voice from a short reference clip. The clip is cleaned up automaticall
 `denoise=True` unless your clip is already clean.
 
 ```python
-audio = tts.infer(
+audio = vieneu.infer(
     "Đây là giọng được nhân bản tức thì.",
     ref_audio="my_voice.wav",   # a 3–8s reference clip
     denoise=True,               # default; set False if the clip is already clean
     style="doc_truyen",
 )
-tts.save(audio, "cloned.wav")
+vieneu.save(audio, "cloned.wav")
 ```
 
 ### Save & reuse a cloned voice
@@ -247,17 +247,17 @@ Register a reference once with `add_voice`, then use it by name like a built-in 
 
 ```python
 # Enroll a voice (denoises + extracts the speaker profile once)
-tts.add_voice("Giọng của tôi", "my_voice.wav")
+vieneu.add_voice("Giọng của tôi", "my_voice.wav")
 
 # Now reuse it anywhere, including the conversation mode
-audio = tts.infer("Câu này dùng giọng đã lưu.", voice="Giọng của tôi")
+audio = vieneu.infer("Câu này dùng giọng đã lưu.", voice="Giọng của tôi")
 
 # Persist your voices so they load next session
-tts.save_voices()                 # writes to the default voices file
-# tts.remove_voice("Giọng của tôi")
+vieneu.save_voices()                 # writes to the default voices file
+# vieneu.remove_voice("Giọng của tôi")
 
 # Add a voice you already cleaned yourself → skip denoising
-tts.add_voice("Giọng sạch", "already_clean.wav", denoise=False)
+vieneu.add_voice("Giọng sạch", "already_clean.wav", denoise=False)
 ```
 
 ### Clean up a clip on its own
@@ -265,7 +265,7 @@ tts.add_voice("Giọng sạch", "already_clean.wav", denoise=False)
 Get the denoised audio without synthesizing anything (e.g. to inspect or store it):
 
 ```python
-wav, sr = tts.denoise("noisy.wav", out_path="clean.wav")   # 44.1 kHz mono
+wav, sr = vieneu.denoise("noisy.wav", out_path="clean.wav")   # 44.1 kHz mono
 ```
 
 > **Note:** `denoise`, `add_voice`, and voice cloning currently require the PyTorch
@@ -309,36 +309,36 @@ REMOTE_MODEL_ID = "pnnbao-ump/VieNeu-TTS-v2"
 
 # Initialization (LIGHTWEIGHT - only loads small codec locally)
 # Default emotion is "natural" (conversational) - set emotion="storytelling" for storytelling mode
-tts = Vieneu(mode='remote', api_base=REMOTE_API_BASE, model_name=REMOTE_MODEL_ID, emotion="natural")
+vieneu = Vieneu(mode='remote', api_base=REMOTE_API_BASE, model_name=REMOTE_MODEL_ID, emotion="natural")
 os.makedirs("outputs", exist_ok=True)
 
 # List remote voices
-available_voices = tts.list_preset_voices()
+available_voices = vieneu.list_preset_voices()
 for desc, name in available_voices:
     print(f"   - {desc} (ID: {name})")
 
 # Use specific voice (dynamically select second voice)
 if available_voices:
     _, my_voice_id = available_voices[1]
-    voice_data = tts.get_preset_voice(my_voice_id)
-    audio_spec = tts.infer(text="Chào bạn, tôi đang nói bằng giọng của bác sĩ Tuyên.", voice=voice_data)
-    tts.save(audio_spec, f"outputs/remote_{my_voice_id}.wav")
+    voice_data = vieneu.get_preset_voice(my_voice_id)
+    audio_spec = vieneu.infer(text="Chào bạn, tôi đang nói bằng giọng của bác sĩ Tuyên.", voice=voice_data)
+    vieneu.save(audio_spec, f"outputs/remote_{my_voice_id}.wav")
     print(f"💾 Saved synthesis to: outputs/remote_{my_voice_id}.wav")
 
 # Standard synthesis (uses default voice)
 text_input = "Chế độ remote giúp tích hợp VieNeu vào ứng dụng Web hoặc App cực nhanh mà không cần GPU tại máy khách."
-audio = tts.infer(text=text_input)
-tts.save(audio, "outputs/remote_output.wav")
+audio = vieneu.infer(text=text_input)
+vieneu.save(audio, "outputs/remote_output.wav")
 print("💾 Saved remote synthesis to: outputs/remote_output.wav")
 
 # Zero-shot voice cloning (encodes audio locally, sends codes to server)
 if os.path.exists("examples/audio_ref/example_ngoc_huyen.wav"):
-    cloned_audio = tts.infer(
+    cloned_audio = vieneu.infer(
         text="Đây là giọng nói được clone và xử lý thông qua VieNeu Server.",
         ref_audio="examples/audio_ref/example_ngoc_huyen.wav",
         ref_text="Tác phẩm dự thi bảo đảm tính khoa học, tính đảng, tính chiến đấu, tính định hướng."
     )
-    tts.save(cloned_audio, "outputs/remote_cloned_output.wav")
+    vieneu.save(cloned_audio, "outputs/remote_cloned_output.wav")
     print("💾 Saved remote cloned voice to: outputs/remote_cloned_output.wav")
 ```
 *For full implementation details, see: [examples/main_remote.py](examples/main_remote.py)*

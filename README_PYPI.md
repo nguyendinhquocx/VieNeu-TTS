@@ -48,26 +48,27 @@ from vieneu import Vieneu
 
 # Default = v3 Turbo (48 kHz). GPU → PyTorch (auto-detected).
 # On CPU the backbone runs int8 by default (fastest); pass precision="fp32" for max quality.
-tts = Vieneu()                    # int8 backbone (default, fastest on CPU)
-# tts = Vieneu(precision="fp32")  # fp32 backbone (max quality, slower on CPU)
+vieneu = Vieneu()                    # int8 backbone (default, fastest on CPU)
+# vieneu = Vieneu(precision="fp32")  # fp32 backbone (max quality, slower on CPU)
+# 💡 On a GPU machine you can still switch to ONNX/CPU if you prefer: Vieneu(backend="onnx")
 
 # 1. Built-in voice by name — no reference needed
 print("🔊 Generating speech...")
-audio = tts.infer("Xin chào, đây là VieNeu-TTS.", voice="Trúc Ly")
-tts.save(audio, "output.wav")
+audio = vieneu.infer("Xin chào, đây là VieNeu-TTS.", voice="Trúc Ly")
+vieneu.save(audio, "output.wav")
 print("✅ Saved to output.wav")
 
 # List the built-in voices
-voices = tts.list_preset_voices()
+voices = vieneu.list_preset_voices()
 print(f"\n🎙️  {len(voices)} built-in voices available:")
 for label, voice_id in voices:
     print(f"  - {label} ({voice_id})")
 
 # 2. Reading style: "tu_nhien" (natural) | "tin_tuc" (news) | "doc_truyen" (storytelling)
-audio = tts.infer("Bản tin sáng nay.", voice="Phạm Tuyên", style="tin_tuc")
+audio = vieneu.infer("Bản tin sáng nay.", voice="Phạm Tuyên", style="tin_tuc")
 
 # 3. Emotion / non-verbal cues — EXPERIMENTAL: [cười] [thở dài] [hắng giọng]
-audio = tts.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
+audio = vieneu.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
 
 # 4. ⚡ Batch on GPU: infer_batch() runs many texts in ONE batched forward — same API.
 #    On a CUDA GPU the chunks from every text share each forward step (big throughput
@@ -82,12 +83,12 @@ audio = tts.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
 #     "Nếu thấy hữu ích, các bạn nhớ để lại một lượt thích và chia sẻ video này cho mọi người nhé!",
 # ] * 10   # 30 texts — enough to fill the batch and really show the GPU throughput win
 # t0 = time.time()
-# audios = tts.infer_batch(texts, voice="Phạm Tuyên")
+# audios = vieneu.infer_batch(texts, voice="Phạm Tuyên")
 # elapsed = time.time() - t0
 # total_audio = sum(len(a) for a in audios) / 48_000
 # print(f"⚡ {len(texts)} texts | audio {total_audio:.1f}s | wall {elapsed:.1f}s | RTF {elapsed/total_audio:.3f}")
 # for i, a in enumerate(audios):
-#     tts.save(a, f"batch_{i}.wav")
+#     vieneu.save(a, f"batch_{i}.wav")
 ```
 
 ### 🔊 Real-time streaming
@@ -95,8 +96,8 @@ audio = tts.infer("Nghe hay quá đi [cười].", voice="Trúc Ly")
 v3 Turbo streams frame-by-frame (first audio ~300 ms, RTF < 1 on CPU). Streaming runs on the **ONNX/CPU** engine — the GPU/PyTorch engine is for **batch throughput**, not streaming, so pin `backend="onnx"` for realtime. Iterate `infer_stream`:
 
 ```python
-tts = Vieneu(backend="onnx")   # force ONNX/CPU — the streaming path (int8)
-for chunk in tts.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
+vieneu = Vieneu(backend="onnx")   # force ONNX/CPU — the streaming path (int8)
+for chunk in vieneu.infer_stream("Xin chào các bạn!", voice="Trúc Ly"):
     play(chunk)   # np.float32 @ 48 kHz, play/write as it arrives
 ```
 
@@ -108,18 +109,18 @@ Clone from a short clip; the reference is auto-denoised and trimmed to ≤ 8s.
 
 ```python
 from vieneu import Vieneu
-tts = Vieneu()
+vieneu = Vieneu()
 
 # Clone straight from a 3–8s clip
-audio = tts.infer("Chào bạn, đây là giọng của tôi.", ref_audio="path/to/voice.wav", denoise=True)
-tts.save(audio, "cloned.wav")
+audio = vieneu.infer("Chào bạn, đây là giọng của tôi.", ref_audio="path/to/voice.wav", denoise=True)
+vieneu.save(audio, "cloned.wav")
 
 # Save a cloned voice and reuse it by name
-tts.add_voice("Giọng của tôi", "path/to/voice.wav")
-audio = tts.infer("Câu này dùng giọng đã lưu.", voice="Giọng của tôi")
+vieneu.add_voice("Giọng của tôi", "path/to/voice.wav")
+audio = vieneu.infer("Câu này dùng giọng đã lưu.", voice="Giọng của tôi")
 
 # Just clean up a clip (no synthesis)
-wav, sr = tts.denoise("noisy.wav", out_path="clean.wav")
+wav, sr = vieneu.denoise("noisy.wav", out_path="clean.wav")
 ```
 
 > `denoise`, `add_voice`, and cloning require the PyTorch (GPU) engine; built-in voices work everywhere.

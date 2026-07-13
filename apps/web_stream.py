@@ -8,8 +8,8 @@ không underrun — chỉ cần player prebuffer ~300–500ms.
     uv run python -m apps.web_stream        # http://127.0.0.1:8001
 
 Public API dùng ở đây:
-    tts = Vieneu(backend="onnx")                    # v3 Turbo int8, ép CPU/ONNX
-    for chunk in tts.infer_stream(text, voice="Minh Đức"):
+    vieneu = Vieneu(backend="onnx")                    # v3 Turbo int8, ép CPU/ONNX
+    for chunk in vieneu.infer_stream(text, voice="Minh Đức"):
         ...                                         # np.float32 @ 48kHz, phát/ghi dần
 """
 import time
@@ -28,18 +28,18 @@ from vieneu import Vieneu
 
 SAMPLE_RATE = 48_000
 app = FastAPI()
-tts = None
+vieneu = None
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 CLIENT_HTML_PATH = ROOT_DIR / "client" / "client.html"
 
 
 def load_model():
-    global tts
+    global vieneu
     print("⏳ Loading VieNeu-TTS v3 Turbo (int8, CPU)...")
     # backend="onnx" ép đường ONNX/CPU int8. KHÔNG để device="auto" (mặc định):
-    tts = Vieneu(backend="onnx")  # == Vieneu(mode="v3turbo", backend="onnx", precision="int8")
-    print(f"✅ Ready. Backbone: int8 | intra_op threads: {getattr(tts.engine, 'ort_intra_op_threads', '?')}")
+    vieneu = Vieneu(backend="onnx")  # == Vieneu(mode="v3turbo", backend="onnx", precision="int8")
+    print(f"✅ Ready. Backbone: int8 | intra_op threads: {getattr(vieneu.engine, 'ort_intra_op_threads', '?')}")
 
 
 load_model()
@@ -61,7 +61,7 @@ async def favicon():
 @app.get("/voices")
 async def voices():
     try:
-        vs = tts.list_preset_voices()
+        vs = vieneu.list_preset_voices()
         out = []
         for item in vs:
             if isinstance(item, (tuple, list)) and len(item) == 2:
@@ -93,7 +93,7 @@ async def stream(text: str, voice_id: Optional[str] = None):
         first_at = None
         n_chunks = 0
         emitted = 0
-        for chunk in tts.infer_stream(text, voice=voice_id or None):
+        for chunk in vieneu.infer_stream(text, voice=voice_id or None):
             if chunk is None or len(chunk) == 0:
                 continue
             if first_at is None:
