@@ -27,6 +27,63 @@ logger = logging.getLogger("Vieneu.V3Turbo")
 class V3TurboVieNeuTTS(BaseVieneuTTS):
     """VieNeu-TTS v3 Turbo (PyTorch)."""
 
+    @staticmethod
+    def _preclean_reference_audio(
+        ref_audio: Union[str, Path],
+        *,
+        top_db: int = 30,
+        out_path: Optional[Union[str, Path]] = None,
+    ) -> str:
+        """Trim silence at the edges and save a cleaned reference clip.
+        """
+        import os
+        import tempfile
+        import soundfile as sf
+
+        src = Path(ref_audio)
+        if not src.exists():
+            return str(src)
+
+        wav, sr = sf.read(str(src), dtype="float32", always_2d=False)
+        if getattr(wav, "ndim", 1) > 1:
+            wav = wav.mean(axis=1)
+        wav = np.asarray(wav, dtype=np.float32)
+
+        try:
+            import librosa
+            wav_trimmed, _ = librosa.effects.trim(wav, top_db=top_db)
+        except Exception:
+            nonzero = np.flatnonzero(np.abs(wav) > 1e-5)
+            if nonzero.size == 0:
+                wav_trimmed = wav
+            else:
+                start = max(int(nonzero[0]) - int(0.01 * sr), 0)
+                end = min(int(nonzero[-1]) + int(0.01 * sr), len(wav))
+                wav_trimmed = wav[start:end]
+
+        if out_path is None:
+            try:
+                secure_dir = Path.home() / ".cache" / "vieneu" / "tmp"
+            except Exception:
+                secure_dir = Path("./outputs/tmp")
+
+            secure_dir.mkdir(parents=True, exist_ok=True)
+            try:
+                secure_dir.chmod(0o700)
+            except Exception:
+                pass
+
+            fd, out_path = tempfile.mkstemp(
+                prefix="temp_clone_optimized_",
+                suffix=".wav",
+                dir=str(secure_dir)
+            )
+            os.close(fd)
+            out_path = Path(out_path)
+
+        sf.write(str(out_path), wav_trimmed, sr)
+        return str(out_path)
+
     def __init__(
         self,
         backbone_repo: str = "pnnbao-ump/VieNeu-TTS-v3-Turbo",
@@ -132,8 +189,18 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         return self._preset_voices[name]
 
     def encode_reference(self, ref_audio: Union[str, Path], denoise: bool = True) -> Tuple[np.ndarray, np.ndarray]:
-        """Enroll a voice from a wav → ``(speaker_emb, ref_codes)``."""
-        return self.engine.prepare_reference(str(ref_audio), denoise=denoise, use_ref_codes=True)
+        """Enroll a voice from a wav → ``(speaker_emb, ref_codes)``.
+        """
+        import os
+        clean_ref = self._preclean_reference_audio(ref_audio)
+        try:
+            return self.engine.prepare_reference(str(clean_ref), denoise=denoise, use_ref_codes=True)
+        finally:
+            if clean_ref and Path(clean_ref).resolve() != Path(ref_audio).resolve():
+                try:
+                    os.remove(clean_ref)
+                except Exception:
+                    pass
 
     def denoise(self, ref_audio: Union[str, Path], out_path: Optional[Union[str, Path]] = None,
                 max_seconds: Optional[float] = None) -> Tuple[np.ndarray, int]:
@@ -168,8 +235,17 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         """
         if not name or not str(name).strip():
             raise ValueError("Tên giọng không được để trống.")
-        speaker_emb, ref_codes = self.engine.prepare_reference(
-            str(ref_audio), denoise=denoise, use_ref_codes=use_ref_codes)
+        import os
+        clean_ref = self._preclean_reference_audio(ref_audio)
+        try:
+            speaker_emb, ref_codes = self.engine.prepare_reference(
+                str(clean_ref), denoise=denoise, use_ref_codes=use_ref_codes)
+        finally:
+            if clean_ref and Path(clean_ref).resolve() != Path(ref_audio).resolve():
+                try:
+                    os.remove(clean_ref)
+                except Exception:
+                    pass
         self._preset_voices[name] = {
             "description": description,
             "gender": gender,
@@ -219,7 +295,16 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         Precedence: cloned ``ref_audio`` → preset ``voice`` (name or dict) → default preset.
         """
         if ref_audio is not None:
-            return self.engine.prepare_reference(str(ref_audio), denoise=denoise, use_ref_codes=use_ref_codes)
+            import os
+            clean_ref = self._preclean_reference_audio(ref_audio)
+            try:
+                return self.engine.prepare_reference(str(clean_ref), denoise=denoise, use_ref_codes=use_ref_codes)
+            finally:
+                if clean_ref and Path(clean_ref).resolve() != Path(ref_audio).resolve():
+                    try:
+                        os.remove(clean_ref)
+                    except Exception:
+                        pass
         preset = None
         if isinstance(voice, str):
             preset = self._preset_voices.get(voice)
