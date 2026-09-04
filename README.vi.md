@@ -90,6 +90,8 @@ SDK `vieneu` **mặc định dùng VieNeu-TTS v3 Turbo (48 kHz)**. Bản cài t�
 
 > ⚡ **Trên CPU, backbone chạy `fp32` theo mặc định** (chất lượng tối đa). Cần nhanh hơn? Truyền `Vieneu(precision="int8")` — nhanh ~1.6× và nhẹ ~4×, nhưng cần CPU hỗ trợ VNNI (AVX-512 VNNI / AVX-VNNI); trên CPU đời cũ int8 có thể cho audio méo/vô nghĩa. `precision` chỉ ảnh hưởng đường CPU/ONNX; trên GPU nó bị bỏ qua (PyTorch).
 >
+> 🪶 **Vẫn quá chậm, hoặc cần deploy trên điện thoại / board ARM?** Dùng **[VieNeu-TTS v3 Nano (preview)](#v3-nano)** — `Vieneu(mode="v3nano")`, nhanh hơn Turbo fp32 ~3× trên CPU (RTF 0.11–0.22 trên CPU desktop), nhưng **chất lượng kém hơn rõ rệt** (nhất là tiếng Anh / song ngữ), 24 kHz, chỉ 6 giọng có sẵn. Xem chi tiết và các hạn chế ở [mục v3 Nano](#v3-nano) bên dưới.
+>
 > ```python
 > vieneu = Vieneu()                    # backbone fp32 (mặc định, chất lượng tối đa)
 > vieneu = Vieneu(precision="int8")    # backbone int8 (nhanh hơn trên CPU có VNNI)
@@ -246,7 +248,47 @@ Lấy audio đã khử nhiễu mà không tổng hợp gì (để nghe/lưu lạ
 wav, sr = vieneu.denoise("noisy.wav", out_path="clean.wav")   # 44.1 kHz mono
 ```
 
-> **Lưu ý:** `denoise`, `add_voice` và voice cloning chạy trên mọi backend — kể cả bản cài CPU/ONNX không torch (toàn bộ pipeline cloning chạy bằng onnxruntime + soxr + kaldi-native-fbank).
+> **Lưu ý:** `denoise`, `add_voice` và voice cloning chạy trên mọi backend — kể cả bản cài CPU/ONNX không torch (toàn bộ pipeline cloning chạy bằng onnxruntime + soxr + kaldi-native-fbank). Ngoại lệ duy nhất là **v3 Nano** bên dưới (chỉ giọng có sẵn).
+
+<a id="v3-nano"></a>
+### v3 Nano (preview) — chỉ dành cho edge device / máy CPU yếu 🪶
+
+> [!WARNING]
+> **v3 Turbo vẫn là mặc định và là bản được khuyến nghị.** Chỉ dùng v3 Nano khi Turbo quá chậm
+> trên máy của bạn (laptop cũ, mini PC, board ARM, CPU không có AVX-512/VNNI khiến bản Turbo int8
+> bị méo tiếng). Nano là model flow-matching 48M tham số (ONNX, CPU, không cần torch) và
+> **đánh đổi chất lượng lấy tốc độ**:
+> - **Chất lượng thấp hơn v3 Turbo — rõ nhất ở tiếng Anh và câu song ngữ Anh-Việt.**
+>   Tiếng Việt gần tương đương; từ tiếng Anh đọc mang giọng Việt và kém ổn định hơn.
+> - Âm thanh **24 kHz** (Turbo: 48 kHz).
+> - **Chỉ 6 giọng có sẵn, không clone giọng** (`ref_audio`, `add_voice`, `encode_reference` sẽ báo lỗi).
+> - **Không streaming theo frame** — `infer_stream` trả từng chunk đã hoàn chỉnh.
+
+Đo trên cùng một CPU desktop (Intel i7 thế hệ 12, 6 luồng ONNX Runtime, ~9 giây tiếng nói):
+
+| Engine | RTF ↓ | Sample rate | Thời gian nạp |
+|---|---|---|---|
+| v3 Turbo ONNX fp32 (mặc định trên CPU) | 0.62 | 48 kHz | ~19 s |
+| v3 Turbo ONNX int8 | 0.37 | 48 kHz | ~14 s |
+| **v3 Nano, 16 bước, cfg 3** (mặc định) | **0.22** | 24 kHz | ~3 s |
+| **v3 Nano, 8 bước, sway −1** | **0.11** | 24 kHz | ~3 s |
+
+RTF = thời gian tính ÷ thời lượng audio (càng nhỏ càng nhanh; 0.22 = nhanh gấp 4.5 lần thời gian thực). Tỉ lệ này giữ nguyên trên máy chậm hơn: Nano nhanh hơn Turbo int8 khoảng **1.7 lần** và Turbo fp32 khoảng **3 lần**, dung lượng tải 282 MB.
+
+```python
+from vieneu import Vieneu
+
+tts = Vieneu(mode="v3nano")                      # ONNX, CPU, không cần torch
+audio = tts.infer("Xin chào, mình là giọng đọc của VieNeu Nano.", voice="Adam")
+tts.save(audio, "nano.wav")                      # 24 kHz
+
+tts.list_preset_voices()                         # Adam, Ái Hân, Mỹ Duyên, Đức Trí, Hữu Quân, Xuân Tiên
+audio = tts.infer("Bản nhanh cho máy rất yếu.", voice="Ái Hân", steps=8, sway=-1)   # nhanh gấp ~2
+```
+
+Tham số: `steps` (số bước Euler, mặc định 16; 8 nhanh gấp ~2, hơi thô hơn — đi kèm `sway=-1`),
+`cfg` (classifier-free guidance, mặc định 3.0; `cfg=0` giảm nửa tính toán nhưng kém rõ chữ),
+`speed`, `seed`, `threads`. Tag cảm xúc `[cười]` `[thở dài]` `[hắng giọng]` dùng như Turbo.
 
 ---
 
@@ -349,9 +391,10 @@ docker run --gpus all \
 | Model | Engine | Thiết bị | Sample Rate | Tính năng |
 |---|---|---|---|---|
 | **VieNeu-TTS v3 Turbo** *(mặc định)* | ONNX (CPU) / PyTorch (GPU) | CPU/GPU | 48 kHz | Giọng dựng sẵn, clone giọng, cảm xúc |
+| **VieNeu-TTS v3 Nano** *(preview, máy yếu)* | ONNX (CPU) | CPU yếu / edge | 24 kHz | 6 giọng dựng sẵn, cảm xúc — **không clone, chất lượng thấp hơn (nhất là tiếng Anh / song ngữ)**, RTF 0.11–0.22 trên desktop |
 
 > [!TIP]
-> Trên **CPU**, backbone chạy `fp32` mặc định (chất lượng tối đa); dùng `Vieneu(precision="int8")` nếu cần nhanh hơn (cần CPU có VNNI). Trên **GPU (CUDA)**, suy luận **tự động batch** — cùng API, không đổi code.
+> Trên **CPU**, backbone chạy `fp32` mặc định (chất lượng tối đa); dùng `Vieneu(precision="int8")` nếu cần nhanh hơn (cần CPU có VNNI). Trên **GPU (CUDA)**, suy luận **tự động batch** — cùng API, không đổi code. Máy quá yếu hoặc deploy trên điện thoại: xem [v3 Nano (preview)](#v3-nano).
 
 ---
 
