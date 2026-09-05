@@ -195,13 +195,11 @@ def get_available_devices() -> list[str]:
 def _supports_cloning(backbone_choice: str) -> bool:
     """Voice Cloning availability by model.
 
-    v3+ clones directly from a sample audio; VieNeu-TTS-v2 (GPU) clones from
-    audio plus a reference transcript. v1 and the CPU/Turbo builds stay
-    preset-only.
+    v3 Turbo and v3 Nano clone directly from a sample audio (Nano fetches its
+    cloning graphs on first use); VieNeu-TTS-v2 (GPU) clones from audio plus a
+    reference transcript. v1 and the CPU v2 builds stay preset-only.
     """
     c = (backbone_choice or "").lower()
-    if "nano" in c:
-        return False   # v3 Nano ships preset voices only (no codec encoder → no cloning)
     return "v3" in c or c == "vieneu-tts-v2 (gpu)"
 
 def get_model_status_message() -> str:
@@ -2056,7 +2054,7 @@ with gr.Blocks(theme=theme, css=css, title="VieNeu-TTS", head=head_html) as demo
                         
                         with gr.Row():
                             btn_detect_speakers = gr.Button("🔍 Quét nhân vật", size="sm", variant="secondary")
-                            silence_slider = gr.Slider(minimum=0, maximum=3, value=0.1, step=0.1, label="⏱️ Khoảng lặng (giây)")
+                            silence_slider = gr.Slider(minimum=0, maximum=3, value=0.3, step=0.1, label="⏱️ Khoảng lặng (giây)")
 
                         gr.Markdown("### 🎭 Cấu hình giọng đọc")
                         gr.Markdown("*Nhấn **Quét nhân vật** để tự động phát hiện và ánh xạ giọng đọc. Tải model trước để có danh sách giọng.*")
