@@ -26,6 +26,7 @@ from vieneu_utils.phonemize_text import (
 )
 from vieneu_utils.core_utils import (
     join_audio_chunks, gaps_to_silence, max_expected_frames, pause_pad_samples,
+    BABBLE_MAX_RETRIES,
 )
 
 
@@ -117,10 +118,12 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         onnx_subfolder: Optional[str] = None,   # override thủ công subfolder; None → suy từ `precision`
         threads: int = 0,   # ONNX/CPU intra-op threads; 0 = mặc định engine (~nhân vật lý, cap 8). Đặt số cụ thể để tinh chỉnh.
         max_batch_size: int = 32,   # GPU/PyTorch: trần số chunk gộp vào một forward (static batching). Batch thực = min(số_chunk, max_batch_size). Bỏ qua trên CPU/ONNX.
+        babble_retries: int = BABBLE_MAX_RETRIES,   # chunk <= 3 tiếng mà "nói thêm" (nhiều cụm âm hơn số tiếng) thì sinh lại tối đa N lần; 0 = tắt
         **kwargs: Any,
     ):
         super().__init__()
         self.sample_rate = 48_000
+        self.babble_retries = max(0, int(babble_retries))
 
         # `precision` chỉ áp cho đường ONNX/CPU (chọn subfolder graph int8 vs fp32).
         # Đường PyTorch/GPU dùng torch fp32/bf16, không liên quan.
@@ -161,6 +164,7 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
                 dtype=dtype,
             )
             self.backend = "pytorch"
+        self.engine.babble_retries = self.babble_retries   # guard chạy ở tầng engine
         logger.info(f"✅ VieNeu-TTS v3 Turbo ready (backend={self.backend})")
 
         # Style is deprecated on v3 Turbo: it is implied by the reference (speaker
@@ -403,6 +407,7 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         if self._batch_engine is None:
             from .v3_turbo_serve import V3TurboBatchEngine
             self._batch_engine = V3TurboBatchEngine(self.engine)
+            self._batch_engine.babble_retries = self.babble_retries
         return self._batch_engine
 
     def _infer_chunks(
@@ -427,19 +432,19 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         """
         n = len(chunks)
         engine = self._get_batch_engine() if (batch_size > 1 and n > 1) else None
+        phs = [phonemize_text_with_emotions(c) for c in chunks]
+
+        def _one(ph: str) -> np.ndarray:
+            return self.engine.infer(
+                phonemes=ph, speaker_emb=speaker_emb, ref_codes=ref_codes,
+                use_ref_codes=use_ref_codes,
+                **_cap_frames(sampling, max_expected_frames(ph)),
+            )
 
         if engine is None:
-            wavs: List[np.ndarray] = []
-            for chunk in chunks:
-                ph = phonemize_text_with_emotions(chunk)
-                wavs.append(self.engine.infer(
-                    phonemes=ph, speaker_emb=speaker_emb, ref_codes=ref_codes,
-                    use_ref_codes=use_ref_codes,
-                    **_cap_frames(sampling, max_expected_frames(ph)),
-                ))
+            wavs: List[np.ndarray] = [_one(ph) for ph in phs]
             return wavs
 
-        phs = [phonemize_text_with_emotions(c) for c in chunks]
         order = sorted(range(n), key=lambda i: len(phs[i]))
         wavs = [None] * n
         for i in range(0, n, batch_size):
@@ -456,7 +461,6 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
                 wavs[j] = w
         return wavs
 
-    # ── Public API ───────────────────────────────────────────────────────────
     def infer(
         self,
         text: str,

@@ -61,18 +61,22 @@ class PhoneChunk:
 
 # ─── Audio utils ─────────────────────────────────────────────────────────────
 
-# TỔNG khoảng nghỉ (giây) giữa hai chunk tuỳ RANH GIỚI đã cắt: ngắt đoạn (\n)
-# nghỉ dài nhất, hết câu (.!?) nghỉ vừa, ngắt trong câu (,;: hoặc cắt cưỡng bức)
-# nghỉ ngắn. Đây là khoảng nghỉ THẬT nghe được (im lặng đuôi chunk trước + zeros
-# chèn + im lặng đầu chunk sau), không phải phần "chèn thêm": ``join_audio_chunks``
-# cắt im lặng thừa ở mép rồi bù zeros cho đủ con số này. Trước đây bảng này là
-# phần chèn thêm (0.35/0.18/0.04) và join không trim, nên khoảng nghỉ thật phụ
-# thuộc giọng: preset v3 Turbo tự phát ~300 ms im lặng trước EOS (phẩy nghỉ
-# ~400 ms, gần bằng hết câu) còn giọng clone hầu như không (phẩy chỉ ~100 ms,
-# nghe như chunk "đè" nhau). Dùng cho đường v3 khi có metadata gap từ splitter.
-V3_GAP_SILENCE = {"para": 0.55, "sentence": 0.32, "minor": 0.14}
+# Khoảng nghỉ TỐI THIỂU (giây) giữa hai chunk tuỳ RANH GIỚI đã cắt: ngắt đoạn
+# (xuống dòng) nghỉ dài nhất, hết câu (.!?) nghỉ vừa, ngắt trong câu (,;: hoặc cắt cưỡng
+# bức) nghỉ ngắn. Đây là khoảng nghỉ THẬT nghe được (im lặng đuôi chunk trước +
+# zeros chèn + im lặng đầu chunk sau): ``join_audio_chunks`` giữ nguyên audio
+# model sinh và chỉ chèn zeros khi tổng im lặng ở khe chưa đủ con số này; đuôi
+# tự nhiên dài hơn thì giữ nguyên. Lịch sử: bảng gốc (0.35/0.18/0.04) là phần
+# chèn THÊM không đo đuôi, nên khoảng nghỉ thật phụ thuộc giọng (preset v3 Turbo
+# tự phát ~300 ms im lặng trước EOS, giọng clone hầu như không -> chunk "đè"
+# nhau); v3.5.1 cắt mép rồi bù cho đúng bằng bảng (0.55/0.32/0.14) — cắt mép bị
+# bỏ 09/2026 vì làm mất đuôi tự nhiên mà không cần thiết (phần cắt < -45 dB).
+# Giá trị hiện tại theo khoảng nghỉ model TỰ sinh khi cả câu nằm trong một chunk
+# (đo trên 23 preset v3 Turbo, 09/2026): phẩy ~0.30–0.45 s, hết câu ~0.50–0.65 s.
+V3_GAP_SILENCE = {"para": 0.70, "sentence": 0.50, "minor": 0.30}
 
-# Chuẩn hoá mép chunk trước khi ghép (xem ``trim_and_fade``).
+# Cắt/fade mép chunk (``trim_and_fade``): còn dùng ở engine v3 Nano cho đầu ra flow
+# model; join_audio_chunks đường v3 Turbo KHÔNG cắt mép nữa (09/2026).
 EDGE_THRESH_DB = -45.0   # ngưỡng "có tiếng" trên envelope mean|x| cửa sổ 10 ms
 EDGE_KEEP_S = 0.04       # im lặng giữ lại mỗi đầu sau khi cắt
 EDGE_FADE_S = 0.015      # fade cosine ở hai mép để không click
@@ -91,13 +95,24 @@ MAX_FRAMES_PER_PHONE = 2.0
 _FRAME_CAP_SLACK = 24            # frame trừ hao cho lead-in / chi phí cố định
 _FRAME_MARKUP_RE = re.compile(r"<\|emotion_\d+\|>|</?en>")
 
-# Codec chạy 12.5 frame/giây. Chunk chỉ có MỘT từ thì công thức tuyến tính vẫn
-# quá hào phóng ("chào" -> 40 frame = 3.2s toàn phần bịa), nên chặn cứng ~1 giây.
-# Không áp khi có emotion cue (tiếng cười/thở dài tốn frame thật), và chỉ áp cho
-# từ có phoneme <= _SINGLE_WORD_MAX_PHONES (một "từ" dài bất thường là do
-# normalize dính, không phải từ thật — để công thức thường lo).
-SINGLE_WORD_MAX_FRAMES = 13      # ~1s @ 12.5 frame/s
-_SINGLE_WORD_MAX_PHONES = 24
+# Codec chạy 12.5 frame/giây. Chunk rất ngắn thì công thức tuyến tính theo phoneme
+# vẫn quá hào phóng ("chào" -> 40 frame = 3.2s toàn phần bịa), nên chặn thêm một
+# trần theo SỐ TIẾNG (âm tiết): 13 frame (~1s) cho 1 tiếng, +5 frame mỗi tiếng
+# thêm, áp cho chunk <= SYLLABLE_CAP_MAX_SYL tiếng. Đếm theo âm tiết chứ KHÔNG
+# theo số từ: "notification" là một từ nhưng 5 âm tiết, đọc gần 1s — trần 13
+# frame cố định cho "một từ" sẽ cắt cụt nó (xem syllable_count). Đo chunk ngắn
+# (2026-09): 1 tiếng 6-9 frame, 2 tiếng 6-10, 3-4 tiếng 12-15 — trần này còn dư
+# >= 1.5x. Không áp khi có emotion cue (tiếng cười/thở dài tốn frame thật).
+SINGLE_WORD_MAX_FRAMES = 13      # trần cho chunk 1 tiếng (~1s @ 12.5 frame/s)
+SYLLABLE_CAP_PER_EXTRA = 5       # +frame cho mỗi tiếng thêm
+SYLLABLE_CAP_MAX_SYL = 4         # chunk dài hơn dùng công thức theo phoneme
+_SINGLE_WORD_MAX_PHONES = 24     # phoneme tối đa hợp lý cho MỘT tiếng
+
+
+def is_cue_only(phonemes: str) -> bool:
+    """Chunk chỉ gồm emotion cue ("[cười]", "[thở dài]"...), không có tiếng nào."""
+    ph = phonemes or ""
+    return "<|emotion_" in ph and not any(ch.isalpha() for ch in _FRAME_MARKUP_RE.sub("", ph))
 
 
 def max_expected_frames(phonemes: str) -> int:
@@ -105,12 +120,17 @@ def max_expected_frames(phonemes: str) -> int:
     stripped = _FRAME_MARKUP_RE.sub("", phonemes or "")
     eff_len = len(stripped)
     cap = _FRAME_CAP_SLACK + int(np.ceil(MAX_FRAMES_PER_PHONE * eff_len))
-    if (
-        len(stripped.split()) <= 1
-        and eff_len <= _SINGLE_WORD_MAX_PHONES
-        and "<|emotion_" not in (phonemes or "")
-    ):
-        cap = min(cap, SINGLE_WORD_MAX_FRAMES)
+    if is_cue_only(phonemes):
+        # Cue đứng một mình: đo 48 lần sinh (2026-09) tiếng cười / thở dài / hắng
+        # giọng tự nhiên dài 5-12 frame; ca trượt EOS nhảy thẳng lên 19-60 frame.
+        # Xử lý như chunk 1 tiếng: trần ~1s, chạm trần => sinh lại (babble_suspect).
+        return min(cap, SINGLE_WORD_MAX_FRAMES)
+    if "<|emotion_" not in (phonemes or ""):
+        syl = max(1, syllable_count(phonemes))      # chuỗi rỗng / không nguyên âm -> coi như 1 tiếng
+        # Một "tiếng" dài bất thường (> _SINGLE_WORD_MAX_PHONES phoneme mỗi tiếng) là
+        # do normalize dính chữ, không phải tiếng thật -> để công thức thường lo.
+        if syl <= SYLLABLE_CAP_MAX_SYL and eff_len <= _SINGLE_WORD_MAX_PHONES * syl:
+            cap = min(cap, SINGLE_WORD_MAX_FRAMES + SYLLABLE_CAP_PER_EXTRA * (syl - 1))
     return cap
 
 
@@ -182,13 +202,13 @@ def join_audio_chunks(
 ) -> np.ndarray:
     """Ghép các chunk audio.
 
-    ``silence_ps`` (tuỳ chọn, đường v3): ``silence_ps[i]`` là TỔNG khoảng nghỉ
-    (giây) mong muốn giữa chunk ``i`` và ``i+1`` theo loại ranh giới. Mỗi chunk
-    được :func:`trim_and_fade` (cắt im lặng model tự sinh, giữ 40 ms, fade mép)
-    rồi chèn zeros vừa đủ để im-lặng-đuôi + zeros + im-lặng-đầu = ``silence_ps[i]``
-    — nhờ đó khoảng nghỉ không phụ thuộc giọng (preset tự phát đuôi dài, clone
-    hầu như không). Khi truyền ``silence_ps`` thì ``silence_p``/``crossfade_p``
-    bị bỏ qua; khe thiếu giá trị nghỉ 0 (chỉ trim + nối).
+    ``silence_ps`` (tuỳ chọn, đường v3): ``silence_ps[i]`` là khoảng nghỉ TỐI
+    THIỂU (giây) giữa chunk ``i`` và ``i+1`` theo loại ranh giới. Audio từng chunk
+    giữ NGUYÊN (không cắt mép, không fade); :func:`pause_pad_samples` đo im lặng
+    đuôi chunk trước + đầu chunk sau và chỉ chèn zeros cho phần còn thiếu — giọng
+    clone đuôi ngắn được bù cho đủ, preset đuôi dài giữ nhịp tự nhiên. Khi truyền
+    ``silence_ps`` thì ``silence_p``/``crossfade_p`` bị bỏ qua; khe thiếu giá trị
+    nghỉ 0 (nối thẳng).
 
     Không có ``silence_ps`` (đường v1/v2): chèn ``silence_p`` giây zeros, hoặc
     crossfade ``crossfade_p`` giây, hoặc nối thẳng — giữ nguyên như cũ.
@@ -197,14 +217,13 @@ def join_audio_chunks(
         return np.array([], dtype=np.float32)
 
     if silence_ps is not None:
-        trimmed = [trim_and_fade(c, sr) for c in chunks]
-        parts: List[np.ndarray] = [trimmed[0]]
-        for i in range(1, len(trimmed)):
+        parts: List[np.ndarray] = [chunks[0]]
+        for i in range(1, len(chunks)):
             pause_s = silence_ps[i - 1] if i - 1 < len(silence_ps) else 0.0
-            pad = pause_pad_samples(trimmed[i - 1], trimmed[i], sr, pause_s)
+            pad = pause_pad_samples(chunks[i - 1], chunks[i], sr, pause_s)
             if pad > 0:
                 parts.append(np.zeros(pad, dtype=np.float32))
-            parts.append(trimmed[i])
+            parts.append(chunks[i])
         return np.concatenate(parts) if len(parts) > 1 else parts[0]
 
     if len(chunks) == 1:
@@ -682,3 +701,107 @@ def env_bool(name: str, default: bool = False) -> bool:
     if v is None:
         return default
     return v.strip().lower() in ('1', 'true', 'yes', 'y', 'on')
+
+# ── Babble guard (chunk rất ngắn "nói thêm") ─────────────────────────────────
+# Chunk 1-3 tiếng thỉnh thoảng bắn trượt stop token rồi bịa thêm một từ cho
+# "trọn câu" ("Được." -> "Được không?", "Vâng." -> "Vâng khi tại."). Đo 160 chunk
+# ngắn trên GPU (2026-09): ~3-6% chunk bị, gần như chỉ ở chunk <= 2 tiếng. Xác suất
+# EOS không báo trước và mã codec "im lặng" cũng xuất hiện ở khoảng nghỉ giữa tiếng,
+# nên không chặn được TRONG vòng lặp sinh; thay vào đó sinh xong thì đếm số cụm
+# năng lượng: một tiếng = một cụm, nhiều cụm hơn số tiếng => bịa => sinh lại.
+BABBLE_MAX_SYLLABLES = 3       # chỉ kiểm chunk có <= N tiếng (dài hơn thì cụm dính nhau, không đếm được)
+BABBLE_MAX_RETRIES = 2
+_BURST_THRESH_DB = -18.0       # cụm = RMS trên ngưỡng này so với RMS đỉnh (hơi thở ~ -25 dB không tính)
+_BURST_MIN_GAP_MS = 60         # hai cụm cách nhau dưới mức này là một cụm (phụ âm đầu bật hơi)
+_BURST_MIN_MS = 30
+_IPA_VOWELS = set("aeiouyæɐɑɒɔəɘɛɜɤɯɵøœʉʊʌɪɨ")
+
+
+def syllable_count(phonemes: str) -> int:
+    """Số tiếng (âm tiết) ước lượng từ chuỗi phoneme SEA-G2P.
+
+    Tiếng Việt: mỗi từ là một tiếng. Từ tiếng Anh (<en>) có thể nhiều âm tiết
+    nên đếm theo số cụm nguyên âm ('sˈækaɪ' -> 2). Markup và dấu câu bị loại.
+    """
+    stripped = _FRAME_MARKUP_RE.sub("", phonemes or "")
+    total = 0
+    for tok in stripped.split():
+        # Nhóm nguyên âm mới chỉ bắt đầu sau một PHỤ ÂM thật; dấu dài (ː), dấu nhấn
+        # (ˈ ˌ) và số thanh điệu không tách nhóm — 'kwˈaːɜ' (quá) là MỘT tiếng dù
+        # 'ɜ' ở đây là ký hiệu thanh sắc chứ không phải nguyên âm.
+        groups, in_v, consonant_seen = 0, False, True
+        for ch in tok:
+            if ch in _IPA_VOWELS:
+                if not in_v and consonant_seen:
+                    groups += 1
+                in_v, consonant_seen = True, False
+            elif ch in "ːˈˌ" or ch.isdigit():
+                in_v = False
+            else:
+                in_v, consonant_seen = False, True
+        if any(ch.isalpha() for ch in tok):
+            total += max(1, groups)
+    return total
+
+
+def count_speech_bursts(wav: np.ndarray, sr: int) -> int:
+    """Số cụm năng lượng (xấp xỉ số tiếng) trong một waveform mono."""
+    wav = np.asarray(wav, dtype=np.float32).reshape(-1)
+    hop = max(1, int(sr * 0.010))
+    n = len(wav) // hop
+    if n == 0:
+        return 0
+    env = np.sqrt((wav[: n * hop].reshape(n, hop) ** 2).mean(axis=1))
+    peak = float(env.max())
+    if peak <= 1e-6:
+        return 0
+    on = env > peak * (10 ** (_BURST_THRESH_DB / 20))
+    min_gap = max(1, _BURST_MIN_GAP_MS // 10)
+    min_len = max(1, _BURST_MIN_MS // 10)
+    bursts, start, last_on = [], None, None
+    for i, o in enumerate(on):
+        if o:
+            if start is None:
+                start = i
+            elif i - last_on > min_gap:          # gap dài hơn ngưỡng -> cụm mới
+                bursts.append((start, last_on)); start = i
+            last_on = i
+    if start is not None:
+        bursts.append((start, last_on))
+    return sum(1 for a, b in bursts if (b - a + 1) >= min_len)
+
+
+def babble_suspect(wav: np.ndarray, sr: int, phonemes: str, cap_frames: int,
+                   n_frames: Optional[int] = None, frames_per_sec: float = 12.5):
+    """-> (suspect, syllables, bursts, n_frames) cho MỘT chunk vừa sinh.
+
+    Chỉ xét chunk <= BABBLE_MAX_SYLLABLES tiếng, không có emotion cue. Nghi "nói
+    thêm" khi: số cụm âm > số tiếng, HOẶC chunk <= 2 tiếng chạy tới sát trần frame
+    (đo A/B 720 chunk: mọi ca bịa thêm từ đều là chunk 1 tiếng ở 12-13/13 frame,
+    chunk 1 tiếng bình thường EOS ở 6-9 frame).
+    """
+    if n_frames is None:
+        n_frames = int(round(len(wav) / (sr / frames_per_sec)))
+    if is_cue_only(phonemes):
+        # Không đếm cụm được (một tràng cười là nhiều cụm) — chỉ dùng luật chạm trần.
+        return n_frames >= cap_frames - 1, 0, 0, n_frames
+    syl = syllable_count(phonemes)
+    if syl == 0 or syl > BABBLE_MAX_SYLLABLES or "<|emotion_" in (phonemes or ""):
+        return False, syl, 0, 0
+    bursts = count_speech_bursts(wav, sr)
+    hit_cap = syl <= 2 and n_frames >= cap_frames - 1
+    return (bursts > syl) or hit_cap, syl, bursts, n_frames
+
+
+def babble_prefer(new, old) -> bool:
+    """Bản sinh lại ``new`` có đáng thay ``old`` không (tuple từ babble_suspect)."""
+    (n_bad, _, n_b, n_len), (o_bad, _, o_b, o_len) = new, old
+    if n_bad != o_bad:
+        return not n_bad
+    return n_b < o_b or (n_b == o_b and n_len < o_len)
+
+
+def babble_log_line(best, tries: int, cap: int) -> str:
+    what = f"chunk {best[1]} tiếng: {best[2]} cụm âm" if best[1] else "cue đứng một mình"
+    return (f"babble guard: {what}, {best[3]}/{cap} frame sau {tries} lần sinh lại"
+            + (" — vẫn nghi ngờ" if best[0] else ""))

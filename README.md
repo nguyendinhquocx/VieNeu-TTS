@@ -39,7 +39,7 @@
 
 1. [🦜 Installation & Web UI](#installation)
 2. [📦 Using the Python SDK](#sdk)
-3. [🐳 High-Quality Server (Standard Mode)](#docker-remote)
+3. [🐳 API Server (v2 — deprecated)](#docker-remote)
 4. [🎓 Fine-tuning (LoRA)](#finetune)
 5. [🔬 Model Overview](#backbones)
 6. [🚀 Roadmap](#roadmap)
@@ -166,7 +166,7 @@ for label, voice_id in voices:
 #     "Nếu thấy hữu ích, các bạn nhớ để lại một lượt thích và chia sẻ video này cho mọi người nhé!",
 # ] * 10   # 30 texts — enough to fill the batch and really show the GPU throughput win
 # t0 = time.time()
-# audios = vieneu.infer_batch(texts, voice="Adam")
+# audios = vieneu.infer_batch(texts, voice="Minh Quân")
 # elapsed = time.time() - t0
 # total_audio = sum(len(a) for a in audios) / 48_000
 # print(f"⚡ {len(texts)} texts | audio {total_audio:.1f}s | wall {elapsed:.1f}s | RTF {elapsed/total_audio:.3f}")
@@ -181,7 +181,7 @@ for label, voice_id in voices:
 ```python
 from vieneu import Vieneu
 vieneu = Vieneu(backend="onnx")                      # force ONNX/CPU — the streaming path (int8)
-for chunk in vieneu.infer_stream("Xin chào các bạn!", voice="Adam"):
+for chunk in vieneu.infer_stream("Xin chào các bạn!", voice="Minh Quân"):
     play(chunk)                                   # np.float32 @ 48 kHz — play/write as it arrives
 ```
 
@@ -195,9 +195,9 @@ uv run python -m apps.web_stream                  # → http://127.0.0.1:8001
 
 The v3 Turbo engine includes **23 curated preset voices** covering **3 regions** (North, Central, South) with diverse genders and speaking characters:
 
-- **Northern (Bắc)**: e.g. Minh Đức, Phạm Tuyên, Trúc Ly, Mai Anh, Quỳnh Anh, Xuân Vĩnh, Anh Khôi, Mạnh Dũng, Minh Quân
+- **Northern (Bắc)**: e.g. Minh Quân *(default)*, Minh Đức, Phạm Tuyên, Trúc Ly, Mai Anh, Quỳnh Anh, Xuân Vĩnh, Anh Khôi, Mạnh Dũng
 - **Central (Trung)**: Quang Sơn, Ngọc Trân
-- **Southern (Nam)**: e.g. Adam *(default)*, Thái Sơn, Thùy Dung, Mỹ Duyên
+- **Southern (Nam)**: e.g. Adam, Thái Sơn, Thùy Dung, Mỹ Duyên
 
 ### Reading style — **deprecated** ⚠️
 
@@ -213,10 +213,10 @@ The v3 Turbo engine includes **23 curated preset voices** covering **3 regions**
 
 ```python
 # Old code — still runs, but `style` is ignored
-audio = vieneu.infer("Bản tin sáng nay.", voice="Adam", style="tin_tuc")
+audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân", style="tin_tuc")
 
 # New code — pick the reading character through the voice / reference clip instead
-audio = vieneu.infer("Bản tin sáng nay.", voice="Adam")
+audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân")
 ```
 
 ### Emotion cues (experimental)
@@ -224,7 +224,7 @@ audio = vieneu.infer("Bản tin sáng nay.", voice="Adam")
 Inline tags are supported anywhere in the text: `[cười]` (chuckle), `[thở dài]` (sigh), `[hắng giọng]` (clear throat).
 
 ```python
-audio = vieneu.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Adam")
+audio = vieneu.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Minh Quân")
 ```
 
 ### Voice cloning
@@ -302,7 +302,7 @@ RTF = compute time ÷ audio duration (lower is faster; 0.22 = 4.5× faster than 
 from vieneu import Vieneu
 
 tts = Vieneu(mode="v3nano")                      # ONNX, CPU, torch-free
-audio = tts.infer("Xin chào, mình là giọng đọc của VieNeu Nano.", voice="Adam")
+audio = tts.infer("Xin chào, mình là giọng đọc của VieNeu Nano.", voice="Minh Quân")
 tts.save(audio, "nano.wav")                      # 24 kHz
 
 tts.list_preset_voices()                         # Adam, Ái Hân, Mỹ Duyên, Đức Trí, Hữu Quân, Xuân Tiên, Mai Anh, Trúc Ly, Anh Khôi, Minh Quân, Mạnh Dũng
@@ -315,11 +315,19 @@ Knobs: `steps` (Euler steps, 16 default; 8 ≈ 2× faster, slightly rougher — 
 
 ---
 
-## 🐳 3. High-Quality Server (Standard Mode) <a name="docker-remote"></a>
+## 🐳 3. API Server (v2 — deprecated) <a name="docker-remote"></a>
+
+> [!WARNING]
+> **Deprecated.** This LMDeploy server and the `remote` mode only work with **VieNeu-TTS v2**, which is no longer updated. They are kept for existing deployments.
+>
+> A **server release of VieNeu-TTS v3** (the full GPU model, built for API deployment) is coming soon. **v3 Turbo** is the on-device version for personal use: run it through the SDK, the [Docker Web UI](#installation), or the FastAPI streaming demo in [`apps/web_stream.py`](apps/web_stream.py) in the meantime.
+
+<details>
+<summary><b>Legacy v2 server instructions (Docker + remote mode)</b></summary>
 
 Deploy VieNeu-TTS as a high-performance API Server (powered by LMDeploy) with a single command.
 
-### 1. Run with Docker (Recommended)
+### 1. Run with Docker
 
 **Requirement**: [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) is required for GPU support.
 
@@ -403,6 +411,8 @@ docker run --gpus all pnnbao/vieneu-tts:serve --model pnnbao-ump/VieNeu-TTS-0.3B
 tts = Vieneu(mode="v3turbo", backbone_repo="finetune/output/my_voice/merged")
 ```
 
+</details>
+
 ---
 
 ## 🎓 4. Fine-tuning (LoRA) <a name="finetune"></a>
@@ -440,12 +450,11 @@ The merged model keeps the full v3 Turbo API (cloning, presets, streaming) on th
 
 ## 🚀 6. Roadmap <a name="roadmap"></a>
 
-- [x] **VieNeu-TTS-v2**: Full high-fidelity bilingual architecture with **Podcast Mode** and **Voice Cloning**.
-- [x] **VieNeu-Codec**: Optimized neural codec for Vietnamese (ONNX).
-- [x] **Turbo Voice Cloning**: Bringing instant cloning to the lightweight Turbo engine.
-- [x] **VieNeu-TTS v3 Turbo**: New from-scratch 48 kHz architecture — built-in default voices (speaker tokens), experimental emotion cues, batched generation & multi-speaker conversation.
-- [ ] **VieNeu-TTS v3 (full release)**: Complete v3 with finalized quality, stable emotion control, more default voices & streaming server.
-- [ ] **Mobile SDK**: Official support for Android/iOS deployment.
+- [x] **VieNeu-TTS v3 Turbo** *(on-device, personal use)*: from-scratch 48 kHz architecture — preset voices, instant voice cloning, emotion cues, batched generation, multi-speaker conversation, frame-level streaming; torch-free on CPU.
+- [x] **VieNeu-TTS v3 Nano** *(preview)*: 48M flow-matching model for weak CPUs / edge devices — 11 preset voices + cloning, torch-free.
+- [x] **LoRA fine-tuning** for v3 Turbo — train your own voice or reading style on one consumer GPU.
+- [ ] **VieNeu-TTS v3 (GPU, server release)**: the full v3 model for API / server deployment — finalized quality, stable emotion control, more voices.
+- [ ] **Mobile SDK**: official Android / iOS deployment.
 
 ---
 
@@ -461,7 +470,7 @@ The merged model keeps the full v3 Turbo API (cloning, presets, streaming) on th
 
 ```bibtex
 @misc{vieneutts2026,
-  title        = {VieNeu-TTS-v2: Advanced Vietnamese Text-to-Speech with Podcast and Code-Switching Support},
+  title        = {VieNeu-TTS: Advanced Vietnamese Text-to-Speech with Instant Voice Cloning},
   author       = {Pham Nguyen Ngoc Bao},
   year         = {2026},
   publisher    = {Hugging Face},
