@@ -33,7 +33,7 @@ explicit = true
 
 [project]
 name = "vieneu"
-version = "3.6.3"
+version = "3.6.4"
 description = "Advanced on-device Vietnamese TTS with instant voice cloning"
 readme = "README_PYPI.md"
 license = { file = "LICENSE" }
@@ -120,9 +120,10 @@ watermark = [
 # v3 Turbo on CUDA (PyTorch backend) — what the docker/Dockerfile.gpu image installs.
 # Install with: uv sync --extra cuda   (or: pip install vieneu[cuda])
 cuda = [
-    "torch",
     "transformers",
     "safetensors",
+    "torch==2.8.0",
+    "torchaudio==2.8.0",
 ]
 
 # LoRA fine-tuning of v3 Turbo (finetune/): GPU only.
@@ -158,7 +159,6 @@ gpu = [
     "transformers; sys_platform == 'darwin'",
     "accelerate; sys_platform == 'darwin'",
     "trafilatura>=2.0.0",
-    "llama-cpp-python==0.3.16",
 ]
 
 [tool.pytest.ini_options]
@@ -178,6 +178,7 @@ include = ["vieneu*", "vieneu_utils*", "apps*", "examples*"]
 
 [tool.setuptools.package-data]
 vieneu = ["assets/*.json", "assets/samples/*"]
+examples = ["audio_ref/*.wav", "srt/*.srt"]  # samples the Gradio app (vieneu-web) offers
 
 [tool.uv.sources]
 
@@ -195,10 +196,4 @@ lmdeploy = [
     { url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32' and python_version == '3.12'" },
     { url = "https://github.com/InternLM/lmdeploy/releases/download/v0.11.0/lmdeploy-0.11.0+cu128-cp312-cp312-manylinux2014_x86_64.whl", marker = "sys_platform == 'linux' and python_version == '3.12'" },
     { index = "pypi", marker = "sys_platform == 'darwin'" }
-]
-
-llama-cpp-python = [
-    { url = "https://github.com/pnnbao97/VieNeu-TTS/releases/download/wheels-v0.3.16/llama_cpp_python-0.3.16-cp312-cp312-win_amd64.whl", marker = "sys_platform == 'win32' and python_version == '3.12'" },
-    { index = "llama-cpp-metal", marker = "sys_platform == 'darwin'" },
-    { index = "pypi", marker = "sys_platform != 'win32' and sys_platform != 'darwin'" }
 ]

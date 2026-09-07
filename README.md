@@ -33,7 +33,10 @@
 >
 > Try it in the Web UI (backbone **"VieNeu-TTS-v3-Turbo"**) or the SDK (`Vieneu(mode="v3turbo")`, the default).
 
-[<img width="600" height="595" alt="VieNeu-TTS Demo" src="https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd" />](https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd)
+[<img width="600" height="590" alt="VieNeu-TTS Demo" src="https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd" />](https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd)
+
+[<img width="600" height="590" alt="VieNeu-TTS Dubbing Demo" src="https://github.com/user-attachments/assets/5888aea1-4f32-4397-9dd9-9c7b743d31bd" />](https://github.com/user-attachments/assets/5888aea1-4f32-4397-9dd9-9c7b743d31bd)
+
 
 ## 📌 Table of Contents
 
