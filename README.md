@@ -33,9 +33,36 @@
 >
 > Try it in the Web UI (backbone **"VieNeu-TTS-v3-Turbo"**) or the SDK (`Vieneu(mode="v3turbo")`, the default).
 
-[<img width="600" height="590" alt="VieNeu-TTS Demo" src="https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd" />](https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd)
+<h3>🎬 Demos</h3>
 
-[<img width="600" height="590" alt="VieNeu-TTS Dubbing Demo" src="https://github.com/user-attachments/assets/5888aea1-4f32-4397-9dd9-9c7b743d31bd" />](https://github.com/user-attachments/assets/5888aea1-4f32-4397-9dd9-9c7b743d31bd)
+<table>
+  <tr>
+    <td align="center">
+      <b>Voice Cloning</b><br><br>
+      <video
+        src="https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd"
+        controls
+        width="100%">
+      </video>
+    </td>
+    <td align="center">
+      <b>Dubbing</b><br><br>
+      <video
+        src="https://github.com/user-attachments/assets/5888aea1-4f32-4397-9dd9-9c7b743d31bd"
+        controls
+        width="100%">
+      </video>
+    </td>
+    <td align="center">
+      <b>Dubbing / Conversation</b><br><br>
+      <video
+        src="https://github.com/user-attachments/assets/28104b78-2d55-4914-85b7-5f425a7e99da"
+        controls
+        width="100%">
+      </video>
+    </td>
+  </tr>
+</table>
 
 
 ## 📌 Table of Contents

@@ -714,7 +714,11 @@ BABBLE_MAX_RETRIES = 2
 _BURST_THRESH_DB = -18.0       # cụm = RMS trên ngưỡng này so với RMS đỉnh (hơi thở ~ -25 dB không tính)
 _BURST_MIN_GAP_MS = 60         # hai cụm cách nhau dưới mức này là một cụm (phụ âm đầu bật hơi)
 _BURST_MIN_MS = 30
-_IPA_VOWELS = set("aeiouyæɐɑɒɔəɘɛɜɤɯɵøœʉʊʌɪɨ")
+# ɚ ɝ  nguyên âm r-colored (computer, fire, hour, bird — giọng Mỹ)
+# ᵻ ᵿ  nguyên âm giảm eSpeak dùng cho âm tiết không nhấn (director -> dᵻɹˈɛktɚ)
+# Thiếu bốn ký hiệu này thì cả một âm tiết biến mất khỏi phép đếm. Tiếng Việt
+# không dùng ký hiệu nào trong số đó nên bổ sung không đụng tới tiếng Việt.
+_IPA_VOWELS = set("aeiouyæɐɑɒɔəɘɛɜɤɯɵøœʉʊʌɪɨɚɝᵻᵿ")
 
 
 def syllable_count(phonemes: str) -> int:
@@ -736,7 +740,19 @@ def syllable_count(phonemes: str) -> int:
                     groups += 1
                 in_v, consonant_seen = True, False
             elif ch in "ːˈˌ" or ch.isdigit():
-                in_v = False
+                # Dấu nhấn đứng TRƯỚC âm tiết mà nó nhấn, nên một dấu nhấn xuất
+                # hiện SAU khi token đã có cụm nguyên âm là ranh giới âm tiết —
+                # kể cả khi không có phụ âm nào chen giữa:
+                #   kɹiːˈeɪt (create)   iː | ˈeɪ        -> 2, trước đây đếm 1
+                #   kəmpjˈuːɾɚ          ə | ˈuː | ɾɚ    -> 3, trước đây đếm 2
+                #   ɹˈeɪdɪˌoʊ (radio)   ˈeɪ | dɪ | ˌoʊ  -> 3, trước đây đếm 2
+                # Điều kiện groups > 0 giữ tiếng Việt nguyên vẹn: sea-g2p đặt
+                # đúng MỘT dấu nhấn cho mỗi tiếng và luôn TRƯỚC cụm nguyên âm
+                # đầu tiên (bˈaːɜw, kwˈaːɜ), lúc đó groups vẫn bằng 0.
+                if ch in "ˈˌ" and groups > 0:
+                    in_v, consonant_seen = False, True
+                else:
+                    in_v = False
             else:
                 in_v, consonant_seen = False, True
         if any(ch.isalpha() for ch in tok):
