@@ -79,6 +79,9 @@
 ---
 
 ## 🦜 1. Installation & Web UI <a name="installation"></a>
+> [!TIP]
+> **On Windows?** The fastest way to get started is the standalone installer at **[vieneu.io/#/download](https://www.vieneu.io/#/download)** — no need to install `uv` or clone the repo manually.
+> **macOS**: a similar installer is coming in an upcoming release; for now, please use the `uv sync` steps below.
 
 ### Setup with `uv` (Recommended)
 `uv` is the fastest way to manage dependencies. 
