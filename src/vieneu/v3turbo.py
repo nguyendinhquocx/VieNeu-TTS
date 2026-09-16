@@ -15,7 +15,7 @@ but it is ignored.
 import logging
 import threading
 from pathlib import Path
-from typing import Any, Generator, List, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, Optional, Tuple, Union
 
 import numpy as np
 
@@ -26,8 +26,12 @@ from vieneu_utils.phonemize_text import (
     normalize_to_chunks_v3_with_gaps,
 )
 from vieneu_utils.core_utils import (
-    join_audio_chunks, gaps_to_silence, max_expected_frames, pause_pad_samples,
+    join_audio_chunks,
+    gaps_to_silence,
+    max_expected_frames,
+    pause_pad_samples,
     BABBLE_MAX_RETRIES,
+    strip_encoder_pad_frame,
 )
 
 
@@ -43,6 +47,28 @@ def _cap_frames(sampling: dict, cap: int) -> dict:
     return out
 
 logger = logging.getLogger("Vieneu.V3Turbo")
+
+
+def _featured_rank(v: dict) -> Optional[int]:
+    """``featured`` from a voices JSON entry as a positive int, else ``None``."""
+    try:
+        r = int(v.get("featured"))
+    except (TypeError, ValueError):
+        return None
+    return r if r > 0 else None
+
+
+def sorted_voices(presets: Dict[str, dict]) -> List[Tuple[str, dict]]:
+    """``(name, entry)`` pairs: editors' picks first (by ``featured`` rank), then the
+    rest in insertion order."""
+    return sorted(presets.items(),
+                  key=lambda kv: (kv[1].get("featured") is None, kv[1].get("featured") or 0))
+
+
+def voice_label(name: str, v: dict) -> str:
+    """Dropdown / CLI label: ``⭐ Name — description`` for editors' picks."""
+    label = f"{name} — {v['description']}" if v.get("description") else name
+    return f"⭐ {label}" if v.get("featured") is not None else label
 
 
 class V3TurboVieNeuTTS(BaseVieneuTTS):
@@ -174,6 +200,10 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         # only as voice metadata / for backward-compatible call signatures.
         self.default_style = "tu_nhien"
         self._preset_voices: dict = {}
+        # Old names that still resolve to a (renamed) preset, e.g. "Minh Quân" →
+        # "Minh Quân Pro". Filled from the voices JSON ("aliases" per entry) so
+        # existing API clients and saved scripts keep working after a rename.
+        self._voice_aliases: dict = {}
         self._default_voice: Optional[str] = None
         # Enrolled references, keyed by clip CONTENT (blake2b of the file bytes) +
         # enrol flags. Enrolling = denoise + x-vector + codec encode ≈ 2.7 s at
@@ -213,9 +243,12 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
                 "description": v.get("description", ""),
                 "gender": v.get("gender", ""),
                 "style": v.get("style", self.default_style),
+                "featured": _featured_rank(v),
+                "aliases": list(v.get("aliases") or []),
                 "speaker_emb": np.asarray(emb, dtype=np.float32) if emb is not None else None,
-                "codes": np.asarray(codes, dtype=np.int64) if codes is not None else None,
+                "codes": strip_encoder_pad_frame(np.asarray(codes, dtype=np.int64)) if codes is not None else None,
             }
+            self._register_aliases(name, v.get("aliases"))
         self._default_voice = data.get("default_voice")
         logger.info(f"📢 Loaded {len(self._preset_voices)} preset voices (default: {self._default_voice})")
 
@@ -254,9 +287,12 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
                 "description": v.get("description", ""),
                 "gender": v.get("gender", ""),
                 "style": v.get("style", self.default_style),
+                "featured": _featured_rank(v),
+                "aliases": list(v.get("aliases") or []),
                 "speaker_emb": np.asarray(emb, dtype=np.float32),
-                "codes": np.asarray(codes, dtype=np.int64) if codes is not None else None,
+                "codes": strip_encoder_pad_frame(np.asarray(codes, dtype=np.int64)) if codes is not None else None,
             }
+            self._register_aliases(name, v.get("aliases"))
             n += 1
         if data.get("default_voice") in self._preset_voices:
             self._default_voice = data["default_voice"]
@@ -264,14 +300,33 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
             logger.info("📢 Loaded %d extra voice(s) shipped with the model.", n)
 
     def list_preset_voices(self) -> List[tuple]:
-        """Return ``[(label, voice_id), ...]`` for the built-in voices."""
-        return [(f"{n} — {v['description']}" if v["description"] else n, n)
-                for n, v in self._preset_voices.items()]
+        """Return ``[(label, voice_id), ...]`` for the built-in voices.
+
+        Editors' picks (``featured`` 1..N in the voices JSON) come first in that
+        order with a ⭐ prefix, then the remaining voices in file order.
+        """
+        return [(voice_label(n, v), n) for n, v in sorted_voices(self._preset_voices)]
+
+    def _register_aliases(self, name: str, aliases) -> None:
+        for a in aliases or []:
+            if a and a != name:
+                self._voice_aliases[str(a)] = name
+
+    def resolve_voice_name(self, name: Optional[str]) -> Optional[str]:
+        """Canonical preset name for ``name`` (itself, or the preset an alias points
+        to); ``None`` if unknown. A real preset always wins over an alias."""
+        if name is None:
+            return None
+        if name in self._preset_voices:
+            return name
+        target = self._voice_aliases.get(name)
+        return target if target in self._preset_voices else None
 
     def get_preset_voice(self, voice_name: Optional[str] = None) -> dict:
-        name = voice_name or self._default_voice
-        if name not in self._preset_voices:
-            raise ValueError(f"Voice '{name}' not found. Available: {list(self._preset_voices)}")
+        name = self.resolve_voice_name(voice_name or self._default_voice)
+        if name is None:
+            raise ValueError(f"Voice '{voice_name or self._default_voice}' not found. "
+                             f"Available: {list(self._preset_voices)}")
         return self._preset_voices[name]
 
     REF_CACHE_MAX = 32   # distinct clips kept (LRU); each entry is a few hundred KB
@@ -375,7 +430,9 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
 
     def remove_voice(self, name: str, save: bool = False) -> None:
         """Remove a registered voice by name."""
+        name = self.resolve_voice_name(name) or name
         self._preset_voices.pop(name, None)
+        self._voice_aliases = {a: t for a, t in self._voice_aliases.items() if t != name}
         if self._default_voice == name:
             self._default_voice = next(iter(self._preset_voices), None)
         if save:
@@ -396,7 +453,13 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
                 "speaker_emb": [round(float(x), 6) for x in np.asarray(emb).reshape(-1)] if emb is not None else None,
                 "codes": np.asarray(codes, dtype=int).tolist() if codes is not None else None,
             }
-        data = {"meta": {"note": "v3 turbo voices: speaker embedding + reference codes"},
+            if v.get("featured") is not None:
+                presets[n]["featured"] = v["featured"]
+            aliases = [a for a, t in self._voice_aliases.items() if t == n]
+            if aliases:
+                presets[n]["aliases"] = aliases
+        data = {"meta": {"note": "v3 turbo voices: speaker embedding + reference codes; "
+                                 "`featured` 1..N marks the editors' picks in display order"},
                 "default_voice": self._default_voice, "presets": presets}
         path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
         logger.info(f"💾 Saved {len(presets)} voices → {path}")
@@ -411,7 +474,8 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
             return self._enroll_reference(ref_audio, denoise=denoise, use_ref_codes=use_ref_codes)
         preset = None
         if isinstance(voice, str):
-            preset = self._preset_voices.get(voice)
+            name = self.resolve_voice_name(voice)
+            preset = self._preset_voices.get(name) if name else None
             if preset is None:
                 raise ValueError(f"Voice '{voice}' not found. Available: {list(self._preset_voices)}")
         elif isinstance(voice, dict):

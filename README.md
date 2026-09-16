@@ -36,9 +36,13 @@
 
 <h3>🎬 Demos</h3>
 
+> [!TIP]
+> **Dubbing**, **Lecture**, and **Audiobook** features are exclusively available in the [official VieNeu App](https://www.vieneu.io/#/download). This GitHub repository only provides a simplified Gradio demo interface and the core SDK for developers.
+
 <table>
+  <!-- Hàng 1 -->
   <tr>
-    <td align="center">
+    <td align="center" width="50%">
       <b>Voice Cloning</b><br><br>
       <video
         src="https://github.com/user-attachments/assets/021f6671-2d7f-4635-91fb-88b2ab0ddbcd"
@@ -46,7 +50,7 @@
         width="100%">
       </video>
     </td>
-    <td align="center">
+    <td align="center" width="50%">
       <b>Dubbing</b><br><br>
       <video
         src="https://github.com/user-attachments/assets/5888aea1-4f32-4397-9dd9-9c7b743d31bd"
@@ -54,10 +58,21 @@
         width="100%">
       </video>
     </td>
-    <td align="center">
+  </tr>
+  <!-- Hàng 2 -->
+  <tr>
+    <td align="center" width="50%">
       <b>Dubbing / Conversation</b><br><br>
       <video
         src="https://github.com/user-attachments/assets/28104b78-2d55-4914-85b7-5f425a7e99da"
+        controls
+        width="100%">
+      </video>
+    </td>
+    <td align="center" width="50%">
+      <b>Lecture</b><br><br>
+      <video
+        src="https://github.com/user-attachments/assets/de3b2d4e-4c50-4164-acdc-e3de90840e26"
         controls
         width="100%">
       </video>
@@ -102,17 +117,12 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
 2. **Install Dependencies:**
-   - **Option 1: CPU & macOS (minimal, torch-free) — recommended for maximum speed** — runs **v3 Turbo via ONNX**
-     > 💡 *No GPU required. Installs only the lightweight ONNX stack; **v3 Turbo runs on CPU (48 kHz)** with default voices, voice cloning and emotion cues. PyTorch is never installed.*
-     >
-     > ⚡ **For the fastest CPU inference, install with `uv sync` — not `pip install`.** `uv sync` reproduces the locked environment that pins the optimized ONNX Runtime build, so you get maximum speed out of the box.
-     >
-     > 🍎 **macOS users: use this option too.** For v3 Turbo the torch-free ONNX path on the CPU is *faster* than the MPS/PyTorch build (`--extra cuda`), so prefer `uv sync` for top speed on Apple Silicon.
+   - **Option 1: CPU & macOS (minimal, torch-free)**
+
      ```bash
      uv sync
      ```
    - **Option 2: GPU** — **v3 Turbo on GPU (PyTorch)**
-     > 💡 The `cuda` extra adds only torch + transformers so **v3 Turbo runs on GPU** — inference is batched automatically on CUDA (same API, no code change). The legacy v1/v2 backends (LMDeploy, llama-cpp) live in `uv sync --group gpu`.*
 
      ```bash
      uv sync --extra cuda
@@ -206,7 +216,7 @@ for label, voice_id in voices:
 #     "Nếu thấy hữu ích, các bạn nhớ để lại một lượt thích và chia sẻ video này cho mọi người nhé!",
 # ] * 10   # 30 texts — enough to fill the batch and really show the GPU throughput win
 # t0 = time.time()
-# audios = vieneu.infer_batch(texts, voice="Minh Quân")
+# audios = vieneu.infer_batch(texts, voice="Minh Quân Pro")
 # elapsed = time.time() - t0
 # total_audio = sum(len(a) for a in audios) / 48_000
 # print(f"⚡ {len(texts)} texts | audio {total_audio:.1f}s | wall {elapsed:.1f}s | RTF {elapsed/total_audio:.3f}")
@@ -240,11 +250,12 @@ docker compose -f docker/docker-compose.yml --profile api-cpu up     # or: Docke
 
 #### Available Voices
 
-The v3 Turbo engine includes **23 curated preset voices** covering **3 regions** (North, Central, South) with diverse genders and speaking characters:
+The v3 Turbo engine includes **25 preset voices** covering **3 regions** (North, Central, South) with diverse genders and speaking characters. `list_preset_voices()` (and the Web UI / API voice lists) show them in this order:
 
-- **Northern (Bắc)**: e.g. Minh Quân *(default)*, Minh Đức, Phạm Tuyên, Trúc Ly, Mai Anh, Quỳnh Anh, Xuân Vĩnh, Anh Khôi, Mạnh Dũng
+- ⭐ **Editors' picks** — the 10 we recommend starting with, hand-selected for naturalness and stability: **Adam bựa, Trúc Ly, Anh Khôi, Mai Anh, Minh Quân Pro** *(default; `"Minh Quân"` still works as an alias)*, **Thùy Dung, Thiền Tâm Đức, Ngọc Huyền, Quang Sơn, Ngọc Trân**
+- **Northern (Bắc)**: Minh Đức, Phạm Tuyên, Xuân Vĩnh, Thanh Bình, Ngọc Linh, Đoan Trang, Quỳnh Anh, Mạnh Dũng (+ picks above)
 - **Central (Trung)**: Quang Sơn, Ngọc Trân
-- **Southern (Nam)**: e.g. Adam, Thái Sơn, Thùy Dung, Mỹ Duyên
+- **Southern (Nam)**: Adam, Thái Sơn, Thục Đoan, Minh Triết, Mỹ Duyên, Đức Trí, Kim Thanh (+ Thùy Dung)
 
 ### Reading style — **deprecated** ⚠️
 
@@ -260,10 +271,10 @@ The v3 Turbo engine includes **23 curated preset voices** covering **3 regions**
 
 ```python
 # Old code — still runs, but `style` is ignored
-audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân", style="tin_tuc")
+audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân Pro", style="tin_tuc")
 
 # New code — pick the reading character through the voice / reference clip instead
-audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân")
+audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân Pro")
 ```
 
 ### Emotion cues (experimental)
@@ -271,7 +282,7 @@ audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân")
 Inline tags are supported anywhere in the text: `[cười]` (chuckle), `[thở dài]` (sigh), `[hắng giọng]` (clear throat).
 
 ```python
-audio = vieneu.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Minh Quân")
+audio = vieneu.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Minh Quân Pro")
 ```
 
 ### Voice cloning
