@@ -200,8 +200,8 @@ class V3TurboVieNeuTTS(BaseVieneuTTS):
         # only as voice metadata / for backward-compatible call signatures.
         self.default_style = "tu_nhien"
         self._preset_voices: dict = {}
-        # Old names that still resolve to a (renamed) preset, e.g. "Minh Quân" →
-        # "Minh Quân Pro". Filled from the voices JSON ("aliases" per entry) so
+        # Old names that still resolve to a (renamed) preset, e.g. "Minh Quân Pro" →
+        # "Hải Đăng". Filled from the voices JSON ("aliases" per entry) so
         # existing API clients and saved scripts keep working after a rename.
         self._voice_aliases: dict = {}
         self._default_voice: Optional[str] = None

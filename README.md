@@ -205,7 +205,7 @@ for label, voice_id in voices:
 #     "Nếu thấy hữu ích, các bạn nhớ để lại một lượt thích và chia sẻ video này cho mọi người nhé!",
 # ] * 10   # 30 texts — enough to fill the batch and really show the GPU throughput win
 # t0 = time.time()
-# audios = vieneu.infer_batch(texts, voice="Minh Quân Pro")
+# audios = vieneu.infer_batch(texts, voice="Hải Đăng")
 # elapsed = time.time() - t0
 # total_audio = sum(len(a) for a in audios) / 48_000
 # print(f"⚡ {len(texts)} texts | audio {total_audio:.1f}s | wall {elapsed:.1f}s | RTF {elapsed/total_audio:.3f}")
@@ -241,8 +241,8 @@ docker compose -f docker/docker-compose.yml --profile api-cpu up     # or: Docke
 
 The v3 Turbo engine includes **25 preset voices** covering **3 regions** (North, Central, South) with diverse genders and speaking characters. `list_preset_voices()` (and the Web UI / API voice lists) show them in this order:
 
-- ⭐ **Editors' picks** — the 10 we recommend starting with, hand-selected for naturalness and stability: **Adam bựa, Trúc Ly, Anh Khôi, Mai Anh, Minh Quân Pro** *(default; `"Minh Quân"` still works as an alias)*, **Thùy Dung, Thiền Tâm Đức, Ngọc Huyền, Quang Sơn, Ngọc Trân**
-- **Northern (Bắc)**: Minh Đức, Phạm Tuyên, Xuân Vĩnh, Thanh Bình, Ngọc Linh, Đoan Trang, Quỳnh Anh, Mạnh Dũng (+ picks above)
+- ⭐ **Editors' picks** — the 10 we recommend starting with, hand-selected for naturalness and stability: **Adam bựa, Trúc Ly, Thiện Minh, Mai Anh, Hải Đăng** *(default)*, **Thùy Dung, Thiền Tâm Đức, Ngọc Huyền, Quang Sơn, Ngọc Trân**
+- **Northern (Bắc)**: Minh Đức, Phạm Tuyên, Xuân Vĩnh, Thanh Bình, Ngọc Linh, Đoan Trang, Quỳnh Anh, Quốc Tuấn (+ picks above)
 - **Central (Trung)**: Quang Sơn, Ngọc Trân
 - **Southern (Nam)**: Adam, Thái Sơn, Thục Đoan, Minh Triết, Mỹ Duyên, Đức Trí, Kim Thanh (+ Thùy Dung)
 
@@ -260,10 +260,10 @@ The v3 Turbo engine includes **25 preset voices** covering **3 regions** (North,
 
 ```python
 # Old code — still runs, but `style` is ignored
-audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân Pro", style="tin_tuc")
+audio = vieneu.infer("Bản tin sáng nay.", voice="Hải Đăng", style="tin_tuc")
 
 # New code — pick the reading character through the voice / reference clip instead
-audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân Pro")
+audio = vieneu.infer("Bản tin sáng nay.", voice="Hải Đăng")
 ```
 
 ### Emotion cues (experimental)
@@ -271,7 +271,7 @@ audio = vieneu.infer("Bản tin sáng nay.", voice="Minh Quân Pro")
 Inline tags are supported anywhere in the text: `[cười]` (chuckle), `[thở dài]` (sigh), `[hắng giọng]` (clear throat).
 
 ```python
-audio = vieneu.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Minh Quân Pro")
+audio = vieneu.infer("Nghe hay quá đi [cười]. Để mình nói tiếp [hắng giọng].", voice="Hải Đăng")
 ```
 
 ### Voice cloning
